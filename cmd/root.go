@@ -1,12 +1,14 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"context"
 	"os"
+	"path/filepath"
 
+	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
 )
 
@@ -47,6 +49,23 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-type ContextKey string
+const gotdir string = ".got"
 
-const WD ContextKey = "wd"
+func newContext(workspace string) (usecase.GotContext, error) {
+
+	if workspace == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+
+		workspace = wd
+	}
+
+	workspace, err := filepath.Abs(workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	return usecase.NewContext(context.Background(), workspace, gotdir), nil
+}

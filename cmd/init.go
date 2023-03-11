@@ -1,13 +1,11 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
@@ -25,21 +23,17 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		path, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-
+		var path string
 		if len(os.Args) == 3 {
 			path = os.Args[2]
 		}
 
-		path, err = filepath.Abs(path)
+		ctx, err := newContext(path)
 		if err != nil {
 			return err
 		}
 
-		if err := usecase.InitDir(path); err != nil {
+		if err := usecase.InitDir(ctx); err != nil {
 			return err
 		}
 

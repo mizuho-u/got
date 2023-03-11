@@ -16,7 +16,7 @@ func TestFirstCommit(t *testing.T) {
 	createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
 	// act
-	commitId, err := usecase.Commit(dir, "First Commit.", time.Unix(1677142145, 0))
+	commitId, err := usecase.Commit(newContext(dir), "First Commit.", time.Unix(1677142145, 0))
 
 	// assert
 	if err != nil {
@@ -45,7 +45,7 @@ func TestCommitExcutableFiles(t *testing.T) {
 	}
 
 	// act
-	commitId, err := usecase.Commit(dir, "commit a executable file", time.Unix(1677142145, 0))
+	commitId, err := usecase.Commit(newContext(dir), "commit a executable file", time.Unix(1677142145, 0))
 
 	// assert
 	if err != nil {

@@ -10,11 +10,9 @@ import (
 	"github.com/mizuho-u/got/usecase/internal"
 )
 
-func Add(wd string, paths ...string) error {
+func Add(ctx GotContext, paths ...string) error {
 
-	gotpath := filepath.Join(wd, ".git")
-
-	filepaths, err := internal.ListFilepathsRecursively(paths, filepath.Join(gotpath))
+	filepaths, err := internal.ListFilepathsRecursively(paths, ctx.GotRoot())
 	if err != nil {
 		return err
 	}
@@ -32,9 +30,9 @@ func Add(wd string, paths ...string) error {
 			return err
 		}
 
-		relpath, err := filepath.Rel(wd, path)
+		relpath, err := filepath.Rel(ctx.WorkspaceRoot(), path)
 		if err != nil {
-			log.Println(wd, path)
+			log.Println(ctx.WorkspaceRoot(), path)
 			return err
 		}
 
@@ -47,7 +45,7 @@ func Add(wd string, paths ...string) error {
 
 	}
 
-	index, err := database.OpenIndex(gotpath)
+	index, err := database.OpenIndex(ctx.GotRoot())
 	if err != nil {
 		return err
 	}
@@ -64,7 +62,7 @@ func Add(wd string, paths ...string) error {
 	}
 	ws.Add(files...)
 
-	objects := database.NewObjects(gotpath)
+	objects := database.NewObjects(ctx.GotRoot())
 	objects.StoreAll(ws.Objects()...)
 
 	index.Update(ws.Index())

@@ -12,11 +12,9 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Commit(wd, message string, now time.Time) (commitId string, err error) {
+func Commit(ctx GotContext, message string, now time.Time) (commitId string, err error) {
 
-	gotpath := filepath.Join(wd, ".git")
-
-	filenames, err := listRelativeFilePaths(wd, gotpath)
+	filenames, err := listRelativeFilePaths(ctx.WorkspaceRoot(), ctx.GotRoot())
 	if err != nil {
 		return "", err
 	}
@@ -24,7 +22,7 @@ func Commit(wd, message string, now time.Time) (commitId string, err error) {
 	files := []*model.File{}
 	for _, f := range filenames {
 
-		absPath := filepath.Join(wd, f)
+		absPath := filepath.Join(ctx.WorkspaceRoot(), f)
 
 		data, err := os.ReadFile(absPath)
 		if err != nil {
@@ -39,7 +37,7 @@ func Commit(wd, message string, now time.Time) (commitId string, err error) {
 		files = append(files, &model.File{Name: f, Data: data, Permission: stat.Mode().Perm()})
 	}
 
-	refs := database.NewRefs(gotpath)
+	refs := database.NewRefs(ctx.GotRoot())
 	parent, err := refs.HEAD()
 	if err != nil {
 		return "", err
@@ -55,7 +53,7 @@ func Commit(wd, message string, now time.Time) (commitId string, err error) {
 		return "", err
 	}
 
-	objects := database.NewObjects(gotpath)
+	objects := database.NewObjects(ctx.GotRoot())
 	objects.StoreAll(ws.Objects()...)
 
 	if err := refs.UpdateHEAD(commitId); err != nil {

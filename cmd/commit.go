@@ -1,6 +1,5 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -25,7 +24,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		path, err := os.Getwd()
+		ctx, err := newContext("")
 		if err != nil {
 			return err
 		}
@@ -36,7 +35,7 @@ to quickly create a Cobra application.`,
 			message += sc.Text()
 		}
 
-		_, err = usecase.Commit(path, message, time.Now())
+		_, err = usecase.Commit(ctx, message, time.Now())
 
 		return err
 	},

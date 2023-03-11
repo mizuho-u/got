@@ -1,13 +1,11 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
@@ -30,12 +28,12 @@ to quickly create a Cobra application.`,
 			return errors.New("specify filepaths to be added")
 		}
 
-		wd, err := os.Getwd()
+		ctx, err := newContext("")
 		if err != nil {
 			return err
 		}
 
-		return usecase.Add(wd, args...)
+		return usecase.Add(ctx, args...)
 
 	},
 }
