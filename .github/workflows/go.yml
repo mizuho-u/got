@@ -11,6 +11,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v3
 
@@ -19,5 +20,9 @@ jobs:
       with:
         go-version-file: ./go.mod
         cache: true
+    
+    - name: Build
+      run: go build -v -o /got ./...
+
     - name: Test
-      run: go test -v ./...
+      run: go test -v github.com/mizuho-u/got/test/e2e -args -build /got

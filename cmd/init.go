@@ -4,7 +4,6 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/mizuho-u/got/usecase"
@@ -36,8 +35,6 @@ to quickly create a Cobra application.`,
 		if err := usecase.InitDir(ctx); err != nil {
 			return err
 		}
-
-		fmt.Println("Initialized empty Got repository in ", path)
 
 		return nil
 	},
