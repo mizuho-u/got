@@ -21,22 +21,28 @@ func TestInitDir(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
+	out := &bytes.Buffer{}
+
 	// act
-	if err := usecase.InitDir(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{})); err != nil {
+	if err := usecase.InitDir(newContext(dir, out, out)); err != nil {
 		t.Fatal("failed to init dir. ", err)
 	}
 
 	// assert
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		t.Error(".got dir not exists.", err)
+		t.Error(".git dir not exists.", err)
 	}
 
 	if _, err := os.Stat(filepath.Join(dir, ".git", "objects")); err != nil {
-		t.Error(".got/objects dir not exists.", err)
+		t.Error(".git/objects dir not exists.", err)
 	}
 
 	if _, err := os.Stat(filepath.Join(dir, ".git", "refs")); err != nil {
-		t.Error(".got/refs dir not exists.", err)
+		t.Error(".git/refs dir not exists.", err)
+	}
+
+	if out.String() != "Initialized empty Jit repository in "+dir {
+		t.Errorf("expect outputmsg \"%s\" got %s", "Initialized empty Jit repository in "+dir, out.String())
 	}
 
 }

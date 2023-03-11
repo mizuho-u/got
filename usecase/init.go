@@ -17,6 +17,10 @@ func InitDir(ctx GotContext) error {
 		return err
 	}
 
-	return database.NewRefs(ctx.GotRoot()).UpdateHEAD("ref: refs/heads/main")
+	if err := database.NewRefs(ctx.GotRoot()).UpdateHEAD("ref: refs/heads/main"); err != nil {
+		return err
+	}
+
+	return ctx.Out("Initialized empty Jit repository in " + ctx.WorkspaceRoot())
 
 }
