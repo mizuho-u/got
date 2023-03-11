@@ -18,7 +18,7 @@ func TestFirstCommit(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	// act
-	err := usecase.Commit(newContext(dir, out), "First Commit.\n\nthe third and subsequent lines...", time.Unix(1677142145, 0))
+	err := usecase.Commit(newContext(dir, out, out), "First Commit.\n\nthe third and subsequent lines...", time.Unix(1677142145, 0))
 
 	// assert
 	if err != nil {
@@ -39,7 +39,7 @@ func TestSecondCommit(t *testing.T) {
 	dir := initDir(t)
 	createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
-	err := usecase.Commit(newContext(dir, &bytes.Buffer{}), "First Commit.\n\nthe third and subsequent lines...", time.Unix(1677142145, 0))
+	err := usecase.Commit(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), "First Commit.\n\nthe third and subsequent lines...", time.Unix(1677142145, 0))
 	if err != nil {
 		t.Fatal("first commit failed. ", err)
 	}
@@ -47,7 +47,7 @@ func TestSecondCommit(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	// act
-	err = usecase.Commit(newContext(dir, out), "second commit", time.Unix(1677142145, 0))
+	err = usecase.Commit(newContext(dir, out, out), "second commit", time.Unix(1677142145, 0))
 	if err != nil {
 		t.Fatal("second commit failed ", err)
 	}
@@ -74,7 +74,7 @@ func TestCommitExcutableFiles(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	// act
-	err := usecase.Commit(newContext(dir, out), "commit a executable file", time.Unix(1677142145, 0))
+	err := usecase.Commit(newContext(dir, out, out), "commit a executable file", time.Unix(1677142145, 0))
 
 	// assert
 	if err != nil {

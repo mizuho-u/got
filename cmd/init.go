@@ -28,7 +28,7 @@ to quickly create a Cobra application.`,
 			path = os.Args[2]
 		}
 
-		ctx, err := newContext(path, cmd.OutOrStdout())
+		ctx, err := newContext(path, cmd)
 		if err != nil {
 			return err
 		}

@@ -15,7 +15,7 @@ func TestAddSingleFile(t *testing.T) {
 	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}), f); err != nil {
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f); err != nil {
 		t.Fatal(err)
 	}
 
@@ -32,7 +32,7 @@ func TestAddMultipleFiles(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}), f1, f2); err != nil {
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1, f2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -49,7 +49,7 @@ func TestAddFilesFromDirectory(t *testing.T) {
 	createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}), dir); err != nil {
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -66,10 +66,10 @@ func TestModifyTheIndex(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}), f1); err != nil {
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1); err != nil {
 		t.Fatal(err)
 	}
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}), f2); err != nil {
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f2); err != nil {
 		t.Fatal(err)
 	}
 

@@ -28,7 +28,7 @@ to quickly create a Cobra application.`,
 			return errors.New("specify filepaths to be added")
 		}
 
-		ctx, err := newContext("", cmd.OutOrStdout())
+		ctx, err := newContext("", cmd)
 		if err != nil {
 			return err
 		}
