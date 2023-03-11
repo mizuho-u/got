@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,7 +12,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Commit(ctx GotContext, commitMessage string, now time.Time, out io.Writer) error {
+func Commit(ctx GotContext, commitMessage string, now time.Time) error {
 
 	filenames, err := listRelativeFilePaths(ctx.WorkspaceRoot(), ctx.GotRoot())
 	if err != nil {
@@ -61,7 +60,7 @@ func Commit(ctx GotContext, commitMessage string, now time.Time, out io.Writer) 
 		return err
 	}
 
-	if _, err := out.Write([]byte(msg(parent, commitId, commitMessage))); err != nil {
+	if err := ctx.Out(msg(parent, commitId, commitMessage)); err != nil {
 		return err
 	}
 

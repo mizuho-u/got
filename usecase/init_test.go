@@ -1,7 +1,9 @@
 package usecase_test
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,7 +22,7 @@ func TestInitDir(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// act
-	if err := usecase.InitDir(newContext(dir)); err != nil {
+	if err := usecase.InitDir(newContext(dir, &bytes.Buffer{})); err != nil {
 		t.Fatal("failed to init dir. ", err)
 	}
 
@@ -45,7 +47,7 @@ func initDir(t testing.TB) string {
 
 	dir := t.TempDir()
 
-	if err := usecase.InitDir(newContext(dir)); err != nil {
+	if err := usecase.InitDir(newContext(dir, &bytes.Buffer{})); err != nil {
 		t.Fatal("failed to init dir. ", err)
 	}
 
@@ -74,6 +76,6 @@ func createFile(t testing.TB, dir, name string, data []byte) string {
 
 }
 
-func newContext(dir string) usecase.GotContext {
-	return usecase.NewContext(context.Background(), dir, ".git")
+func newContext(dir string, out io.Writer) usecase.GotContext {
+	return usecase.NewContext(context.Background(), dir, ".git", out)
 }

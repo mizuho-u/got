@@ -24,7 +24,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		ctx, err := newContext("")
+		ctx, err := newContext("", cmd.OutOrStdout())
 		if err != nil {
 			return err
 		}
@@ -35,7 +35,7 @@ to quickly create a Cobra application.`,
 			message += sc.Text()
 		}
 
-		err = usecase.Commit(ctx, message, time.Now(), os.Stdout)
+		err = usecase.Commit(ctx, message, time.Now())
 
 		return err
 	},

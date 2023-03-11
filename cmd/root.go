@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -51,7 +52,7 @@ func init() {
 
 const gotdir string = ".got"
 
-func newContext(workspace string) (usecase.GotContext, error) {
+func newContext(workspace string, out io.Writer) (usecase.GotContext, error) {
 
 	if workspace == "" {
 		wd, err := os.Getwd()
@@ -67,5 +68,5 @@ func newContext(workspace string) (usecase.GotContext, error) {
 		return nil, err
 	}
 
-	return usecase.NewContext(context.Background(), workspace, gotdir), nil
+	return usecase.NewContext(context.Background(), workspace, gotdir, out), nil
 }

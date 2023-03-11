@@ -2,6 +2,7 @@ package usecase
 
 import (
 	c "context"
+	"io"
 	"path/filepath"
 )
 
@@ -9,16 +10,18 @@ type GotContext interface {
 	c.Context
 	WorkspaceRoot() string
 	GotRoot() string
+	Out(string) error
 }
 
 type gotContext struct {
 	c.Context
 	workspaceRoot string
 	gotRoot       string
+	w             io.Writer
 }
 
-func NewContext(ctx c.Context, workspaceRoot, gotroot string) GotContext {
-	return &gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot)}
+func NewContext(ctx c.Context, workspaceRoot, gotroot string, out io.Writer) GotContext {
+	return &gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot), out}
 }
 
 func (g *gotContext) WorkspaceRoot() string {
@@ -27,4 +30,11 @@ func (g *gotContext) WorkspaceRoot() string {
 
 func (g *gotContext) GotRoot() string {
 	return g.gotRoot
+}
+
+func (g *gotContext) Out(msg string) error {
+
+	_, err := g.w.Write([]byte(msg))
+
+	return err
 }
