@@ -45,7 +45,7 @@ func Commit(wd, message string, now time.Time) (commitId string, err error) {
 		return "", err
 	}
 
-	ws, err := model.NewWorkspace(nil)
+	ws, err := model.NewWorkspace()
 	if err != nil {
 		return "", err
 	}

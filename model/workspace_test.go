@@ -13,7 +13,7 @@ func TestCommitWorkspace(t *testing.T) {
 
 	// arrange
 	// act
-	ws, err := model.NewWorkspace(nil)
+	ws, err := model.NewWorkspace()
 	if err != nil {
 		t.Fatal("create workspace failed. ", err)
 	}
