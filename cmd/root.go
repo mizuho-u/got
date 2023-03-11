@@ -47,9 +47,10 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringP("path", "C", "", "path")
 }
 
-const gotdir string = ".got"
+const gotdir string = ".git"
 
 func newContext(workspace string, cmd *cobra.Command) (usecase.GotContext, error) {
 
@@ -62,9 +63,14 @@ func newContext(workspace string, cmd *cobra.Command) (usecase.GotContext, error
 		workspace = wd
 	}
 
-	workspace, err := filepath.Abs(workspace)
-	if err != nil {
-		return nil, err
+	if !filepath.IsAbs(workspace) {
+
+		abs, err := filepath.Abs(workspace)
+		if err != nil {
+			return nil, err
+		}
+
+		workspace = abs
 	}
 
 	return usecase.NewContext(context.Background(), workspace, gotdir, cmd.OutOrStdout(), cmd.OutOrStderr()), nil
