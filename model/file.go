@@ -3,6 +3,8 @@ package model
 import (
 	"io/fs"
 	"syscall"
+
+	"github.com/mizuho-u/got/model/internal"
 )
 
 type File struct {
@@ -27,11 +29,14 @@ type FileStat struct {
 
 func NewFileStat(stat *syscall.Stat_t) *FileStat {
 
+	cspec := internal.Ctimespec(stat)
+	mspec := internal.Mtimespec(stat)
+
 	return &FileStat{
-		ctime:      uint32(stat.Ctimespec.Sec),
-		ctime_nsec: uint32(stat.Ctimespec.Nsec),
-		mtime:      uint32(stat.Mtimespec.Sec),
-		mtime_nsec: uint32(stat.Mtimespec.Nsec),
+		ctime:      uint32(cspec.Sec),
+		ctime_nsec: uint32(cspec.Nsec),
+		mtime:      uint32(mspec.Sec),
+		mtime_nsec: uint32(mspec.Nsec),
 		dev:        uint32(stat.Dev),
 		ino:        uint32(stat.Ino),
 		mode:       uint32(stat.Mode),
