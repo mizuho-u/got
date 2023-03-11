@@ -22,7 +22,7 @@ jobs:
         cache: true
     
     - name: Build
-      run: go build -v -o /got github.com/mizuho-u/got
+      run: go build -v -o ${GITHUB_WORKSPACE}/bin/got github.com/mizuho-u/got
 
     - name: Test
-      run: go test -v github.com/mizuho-u/got/test/e2e -args -build /got
+      run: go test -v github.com/mizuho-u/got/test/e2e -args -build ${GITHUB_WORKSPACE}/bin/got
