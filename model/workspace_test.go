@@ -18,7 +18,7 @@ func TestCommitWorkspace(t *testing.T) {
 		t.Fatal("create workspace failed. ", err)
 	}
 
-	commitId, err := ws.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", time.Unix(1511204319, 0), &model.File{Name: "hello.txt", Data: []byte("Hello"), Permission: 0644})
+	commitId, err := ws.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319), &model.File{Name: "hello.txt", Data: []byte("Hello"), Permission: 0644})
 	if err != nil {
 		t.Fatal("commit failed. ", err)
 	}
@@ -50,6 +50,19 @@ func TestCommitWorkspace(t *testing.T) {
 	if created != 0b0111 {
 		t.Fatalf("missing blob, tree or commit objects %b", created)
 	}
+
+}
+
+func getTimeInJst(t *testing.T, unixsec int64) time.Time {
+
+	t.Helper()
+
+	jst, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return time.Unix(unixsec, 0).In(jst)
 
 }
 
