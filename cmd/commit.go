@@ -35,7 +35,7 @@ to quickly create a Cobra application.`,
 			message += sc.Text()
 		}
 
-		_, err = usecase.Commit(ctx, message, time.Now())
+		err = usecase.Commit(ctx, message, time.Now(), os.Stdout)
 
 		return err
 	},

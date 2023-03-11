@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,11 +13,11 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Commit(ctx GotContext, message string, now time.Time) (commitId string, err error) {
+func Commit(ctx GotContext, commitMessage string, now time.Time, out io.Writer) error {
 
 	filenames, err := listRelativeFilePaths(ctx.WorkspaceRoot(), ctx.GotRoot())
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	files := []*model.File{}
@@ -26,12 +27,12 @@ func Commit(ctx GotContext, message string, now time.Time) (commitId string, err
 
 		data, err := os.ReadFile(absPath)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		stat, err := os.Stat(absPath)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		files = append(files, &model.File{Name: f, Data: data, Permission: stat.Mode().Perm()})
@@ -40,34 +41,31 @@ func Commit(ctx GotContext, message string, now time.Time) (commitId string, err
 	refs := database.NewRefs(ctx.GotRoot())
 	parent, err := refs.HEAD()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	ws, err := model.NewWorkspace()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	commitId, err = ws.Commit(parent, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), message, now, files...)
+	commitId, err := ws.Commit(parent, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), commitMessage, now, files...)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	objects := database.NewObjects(ctx.GotRoot())
 	objects.StoreAll(ws.Objects()...)
 
 	if err := refs.UpdateHEAD(commitId); err != nil {
-		return "", err
+		return err
 	}
 
-	prefix := ""
-	if parent == "" {
-		prefix = "(root-commit) "
+	if _, err := out.Write([]byte(msg(parent, commitId, commitMessage))); err != nil {
+		return err
 	}
-	fmt.Printf("%s%s %s", prefix, commitId, message)
 
-	return commitId, nil
-
+	return nil
 }
 
 func listRelativeFilePaths(dir, ignore string) ([]string, error) {
@@ -99,4 +97,15 @@ func listRelativeFilePaths(dir, ignore string) ([]string, error) {
 	})
 
 	return filenames, err
+}
+
+func msg(parent, commitId, commitMessage string) string {
+
+	prefix := ""
+	if parent == "" {
+		prefix = "(root-commit) "
+	}
+
+	return fmt.Sprintf("[%s%s] %s", prefix, commitId, strings.Split(commitMessage, "\n")[0])
+
 }

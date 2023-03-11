@@ -16,18 +16,25 @@ func NewRefs(gotpath string) *refs {
 
 func (r *refs) HEAD() (string, error) {
 
-	head, err := os.Open(filepath.Join(r.gotpath, "HEAD"))
+	f, err := os.Open(filepath.Join(r.gotpath, "HEAD"))
 	if err == os.ErrNotExist {
 		return "", nil
 	}
-	defer head.Close()
+	defer f.Close()
 
-	commitId, err := io.ReadAll(head)
+	read, err := io.ReadAll(f)
 	if err == os.ErrNotExist {
 		return "", err
 	}
 
-	return string(commitId), nil
+	// テスト時にgitコマンドがレポジトリを認識するようgot initで仮のHEADファイルを生成しているが、
+	// refの実装はまだ追いついていないので実装するまで空で返す
+	head := string(read)
+	if head == "ref: refs/heads/main" {
+		head = ""
+	}
+
+	return head, nil
 }
 
 func (r *refs) UpdateHEAD(commitId string) error {
