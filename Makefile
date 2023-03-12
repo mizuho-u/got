@@ -1,7 +1,7 @@
 OUTPUT_DIR := $(shell pwd)/bin/got
 
 .PHONY: build
-build: $(shell find . -type f -name '*go' -print)
+build: $(shell find . -type f -name '*.go' -print)
 	go build -o $(OUTPUT_DIR) github.com/mizuho-u/got
 
 .PHONY:	test
