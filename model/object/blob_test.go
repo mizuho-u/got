@@ -25,7 +25,7 @@ func TestCreateBlobObject(t *testing.T) {
 		}
 
 		if blob.OID() != tt.oid {
-			t.Error("unexpected oid")
+			t.Errorf("unexpected oid. expect %s got %s", tt.oid, blob.OID())
 		}
 
 	}
