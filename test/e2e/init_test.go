@@ -1,22 +1,13 @@
 package e2e
 
 import (
-	"flag"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"testing"
 )
 
-var bin = flag.String("build", "", "the build path")
-
 func TestInit(t *testing.T) {
-
-	buildPathAbs, err := filepath.Abs(*bin)
-	if err != nil {
-		t.Fatal("invalid build path")
-	}
 
 	tt := []struct {
 		description string
@@ -42,11 +33,12 @@ func TestInit(t *testing.T) {
 		},
 	}
 
+	build := buildpath(t)
 	for _, tc := range tt {
 
 		t.Run(tc.description, func(t *testing.T) {
 
-			out, err := exec.Command(buildPathAbs, "init", tc.path(t)).Output()
+			out, err := exec.Command(build, "init", tc.path(t)).Output()
 			if err != nil {
 				t.Fatal("exec got command failed ", err)
 			}
