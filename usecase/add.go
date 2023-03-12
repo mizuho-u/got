@@ -45,7 +45,7 @@ func Add(ctx GotContext, paths ...string) error {
 
 	}
 
-	index, err := database.OpenIndex(ctx.GotRoot())
+	index, err := database.OpenIndexForUpdate(ctx.GotRoot())
 	if err != nil {
 		return err
 	}

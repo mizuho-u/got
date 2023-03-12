@@ -15,13 +15,28 @@ type index struct {
 	lockfile *lockfile
 }
 
-func OpenIndex(gotpath string) (*index, error) {
+func OpenIndexForUpdate(gotpath string) (*index, error) {
 
 	i := &index{path: filepath.Join(gotpath, "index")}
 
 	if err := i.lock(); err != nil {
 		return nil, err
 	}
+
+	f, err := os.Open(i.path)
+	switch {
+	case err == nil:
+		i.file = f
+		return i, nil
+	case errors.Is(err, syscall.ENOENT):
+		return i, nil
+	default:
+		return nil, err
+	}
+}
+func OpenIndexForRead(gotpath string) (*index, error) {
+
+	i := &index{path: filepath.Join(gotpath, "index")}
 
 	f, err := os.Open(i.path)
 	switch {
