@@ -13,11 +13,14 @@ func TestFirstCommit(t *testing.T) {
 
 	// arrange
 	dir := initDir(t)
-	createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
+	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
-	out := &bytes.Buffer{}
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f); err != nil {
+		t.Fatal("failed to add. ", err)
+	}
 
 	// act
+	out := &bytes.Buffer{}
 	err := usecase.Commit(newContext(dir, out, out), "First Commit.\n\nthe third and subsequent lines...", time.Unix(1677142145, 0))
 
 	// assert
@@ -37,16 +40,25 @@ func TestSecondCommit(t *testing.T) {
 
 	// arrange
 	dir := initDir(t)
-	createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
+	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
+
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f); err != nil {
+		t.Fatal("failed to add. ", err)
+	}
 
 	err := usecase.Commit(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), "First Commit.\n\nthe third and subsequent lines...", time.Unix(1677142145, 0))
 	if err != nil {
 		t.Fatal("first commit failed. ", err)
 	}
 
-	out := &bytes.Buffer{}
-
 	// act
+	f2 := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
+
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f2); err != nil {
+		t.Fatal("failed to add. ", err)
+	}
+
+	out := &bytes.Buffer{}
 	err = usecase.Commit(newContext(dir, out, out), "second commit", time.Unix(1677142145, 0))
 	if err != nil {
 		t.Fatal("second commit failed ", err)
@@ -71,9 +83,12 @@ func TestCommitExcutableFiles(t *testing.T) {
 		t.Fatal("failed to chmod test file. ", err)
 	}
 
-	out := &bytes.Buffer{}
+	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), hello); err != nil {
+		t.Fatal("failed to add. ", err)
+	}
 
 	// act
+	out := &bytes.Buffer{}
 	err := usecase.Commit(newContext(dir, out, out), "commit a executable file", time.Unix(1677142145, 0))
 
 	// assert

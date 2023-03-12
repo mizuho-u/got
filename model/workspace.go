@@ -48,24 +48,12 @@ func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 
 }
 
-func (w *workspace) Commit(parent, author, email, message string, now time.Time, files ...*File) (commitId string, err error) {
+func (w *workspace) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
 
 	entries := []object.Entry{}
 
-	for _, f := range files {
-
-		blob, err := object.NewBlob(f.Name, f.Data)
-		if err != nil {
-			return commitId, err
-		}
-		w.objects = append(w.objects, blob)
-
-		permission := object.RegularFile
-		if f.IsExecutable() {
-			permission = object.ExecutableFile
-		}
-
-		entries = append(entries, object.NewTreeEntry(f.Name, permission, blob.OID()))
+	for _, entry := range w.index.entries {
+		entries = append(entries, object.NewTreeEntry(entry.filename, entry.permission(), entry.oid))
 	}
 
 	root, err := object.BuildTree(entries)

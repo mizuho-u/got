@@ -34,6 +34,7 @@ func OpenIndexForUpdate(gotpath string) (*index, error) {
 		return nil, err
 	}
 }
+
 func OpenIndexForRead(gotpath string) (*index, error) {
 
 	i := &index{path: filepath.Join(gotpath, "index")}

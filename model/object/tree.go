@@ -7,18 +7,18 @@ import (
 	"strings"
 )
 
-type permission string
+type Permission string
 
 const (
-	RegularFile    permission = "100644"
-	ExecutableFile permission = "100755"
-	Directory      permission = "40000"
+	RegularFile    Permission = "100644"
+	ExecutableFile Permission = "100755"
+	Directory      Permission = "40000"
 )
 
 type treeEntry struct {
 	filepath string
 	oid      string
-	perm     permission
+	perm     Permission
 }
 
 func (te *treeEntry) OID() string {
@@ -33,7 +33,7 @@ func (te *treeEntry) fullpath() string {
 	return te.filepath
 }
 
-func (te *treeEntry) permission() permission {
+func (te *treeEntry) permission() Permission {
 	return te.perm
 }
 
@@ -45,11 +45,11 @@ type Entry interface {
 	OID() string
 	basename() string
 	fullpath() string
-	permission() permission
+	permission() Permission
 	build() error
 }
 
-func NewTreeEntry(filepath string, permission permission, oid string) Entry {
+func NewTreeEntry(filepath string, permission Permission, oid string) Entry {
 	return &treeEntry{filepath: filepath, perm: permission, oid: oid}
 }
 
@@ -197,7 +197,7 @@ func (t *tree) fullpath() string {
 	return t.full
 }
 
-func (t *tree) permission() permission {
+func (t *tree) permission() Permission {
 	return Directory
 }
 

@@ -2,9 +2,7 @@ package usecase
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,27 +12,14 @@ import (
 
 func Commit(ctx GotContext, commitMessage string, now time.Time) error {
 
-	filenames, err := listRelativeFilePaths(ctx.WorkspaceRoot(), ctx.GotRoot())
+	index, err := database.OpenIndexForRead(ctx.GotRoot())
 	if err != nil {
 		return err
 	}
 
-	files := []*model.File{}
-	for _, f := range filenames {
-
-		absPath := filepath.Join(ctx.WorkspaceRoot(), f)
-
-		data, err := os.ReadFile(absPath)
-		if err != nil {
-			return err
-		}
-
-		stat, err := os.Stat(absPath)
-		if err != nil {
-			return err
-		}
-
-		files = append(files, &model.File{Name: f, Data: data, Permission: stat.Mode().Perm()})
+	ws, err := model.NewWorkspace(model.WithIndex(index))
+	if err != nil {
+		return err
 	}
 
 	refs := database.NewRefs(ctx.GotRoot())
@@ -43,12 +28,7 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) error {
 		return err
 	}
 
-	ws, err := model.NewWorkspace()
-	if err != nil {
-		return err
-	}
-
-	commitId, err := ws.Commit(parent, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), commitMessage, now, files...)
+	commitId, err := ws.Commit(parent, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), commitMessage, now)
 	if err != nil {
 		return err
 	}
@@ -65,37 +45,6 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) error {
 	}
 
 	return nil
-}
-
-func listRelativeFilePaths(dir, ignore string) ([]string, error) {
-
-	filenames := []string{}
-
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() {
-			return nil
-		}
-
-		if strings.HasPrefix(path, ignore) {
-			return nil
-		}
-
-		path, err = filepath.Rel(dir, path)
-		if err != nil {
-			return err
-		}
-
-		filenames = append(filenames, path)
-		return nil
-
-	})
-
-	return filenames, err
 }
 
 func msg(parent, commitId, commitMessage string) string {

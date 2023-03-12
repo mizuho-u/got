@@ -1,24 +1,38 @@
-package model_test
+package model
 
 import (
 	"bytes"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/mizuho-u/got/model"
 )
 
 func TestCommitWorkspace(t *testing.T) {
 
 	// arrange
+	index, err := newIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	index.add(NewIndexEntry("hello.txt", "5ab2f8a4323abafb10abb68657d9d39f1a775057", &FileStat{mode: 0644}))
+
+	b, err := index.Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := &bytes.Buffer{}
+	_, err = buf.Write(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// act
-	ws, err := model.NewWorkspace()
+	ws, err := NewWorkspace(WithIndex(buf))
 	if err != nil {
 		t.Fatal("create workspace failed. ", err)
 	}
 
-	commitId, err := ws.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319), &model.File{Name: "hello.txt", Data: []byte("Hello"), Permission: 0644})
+	commitId, err := ws.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319))
 	if err != nil {
 		t.Fatal("commit failed. ", err)
 	}
@@ -28,11 +42,11 @@ func TestCommitWorkspace(t *testing.T) {
 		t.Fatalf("commitId not match. expect %s got %s", "a5969546fc417f4b362e5290ad8ee49b044bfc0e", commitId)
 	}
 
-	if len(ws.Objects()) != 3 {
-		t.Fatalf("unexpected objects length want 3 got %d", len(ws.Objects()))
+	if len(ws.Objects()) != 2 {
+		t.Fatalf("unexpected objects length want 2 got %d", len(ws.Objects()))
 	}
 
-	// expect every object class to be created
+	// expect tree, commit objects to be created
 	created := 0b0000
 	for _, o := range ws.Objects() {
 
@@ -47,7 +61,7 @@ func TestCommitWorkspace(t *testing.T) {
 
 	}
 
-	if created != 0b0111 {
+	if created != 0b0110 {
 		t.Fatalf("missing blob, tree or commit objects %b", created)
 	}
 
@@ -93,7 +107,7 @@ func TestNewWorkspaceWithIndex(t *testing.T) {
 		0xef, 0x07, 0xbf, 0xac, 0x40, 0xfb, 0x34, 0x1e, 0x19, 0x88, 0x6e, 0x05, 0x96, 0x94, 0x5e, 0x06,
 	}
 
-	ws, err := model.NewWorkspace(model.WithIndex(bytes.NewBuffer(source)))
+	ws, err := NewWorkspace(WithIndex(bytes.NewBuffer(source)))
 	if err != nil {
 		t.Fatal(err)
 	}

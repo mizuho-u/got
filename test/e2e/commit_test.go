@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"os"
-	"os/exec"
 	"regexp"
 	"testing"
 )
@@ -13,18 +12,14 @@ func TestFirstCommit(t *testing.T) {
 	build := buildpath(t)
 	tempdir := initDir(t, build)
 
-	createFile(t, tempdir, "hello.txt", []byte("Hello world.\n"))
+	f := createFile(t, tempdir, "hello.txt", []byte("Hello world.\n"))
+	executeCmd(t, build+" -C "+tempdir+" add "+f)
 
 	// act
-	cmd := `echo "First Commit.\n\nthe third and subsequent lines..." | ` + build + " -C " + tempdir + " commit"
-	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		t.Fatal("first commit failed ", string(out), err)
-	}
+	out := executeCmd(t, `echo "First Commit.\n\nthe third and subsequent lines..." | `+build+" -C "+tempdir+" commit")
 
 	// assert
 	expect := `\[\(root-commit\) [0-9a-f]{40}\] First Commit.`
-
 	if !regexp.MustCompile(expect).MatchString(string(out)) {
 		t.Fatalf("unexpected output. expect %s, got %s", expect, out)
 	}
@@ -36,25 +31,21 @@ func TestSecondCommit(t *testing.T) {
 	// arrange
 	build := buildpath(t)
 	tempdir := initDir(t, build)
-	createFile(t, tempdir, "hello.txt", []byte("Hello world.\n"))
 
-	cmd := `echo "First Commit.\n\nthe third and subsequent lines..." | ` + build + " -C " + tempdir + " commit"
-	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		t.Fatal("first commit failed. ", string(out), err)
-	}
+	f1 := createFile(t, tempdir, "hello.txt", []byte("Hello world.\n"))
+	executeCmd(t, build+" -C "+tempdir+" add "+f1)
+
+	executeCmd(t, `echo "First Commit.\n\nthe third and subsequent lines..." | `+build+" -C "+tempdir+" commit")
 
 	// act
-	cmd = `echo "second commit" | ` + build + " -C " + tempdir + " commit"
-	out, err = exec.Command("sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		t.Fatal("second commit failed ", string(out))
-	}
+	f2 := createFile(t, tempdir, "hello2.txt", []byte("Hello world.\n"))
+	executeCmd(t, build+" -C "+tempdir+" add "+f2)
+
+	out := executeCmd(t, `echo "second commit" | `+build+" -C "+tempdir+" commit")
 
 	// assert
 	expect := `\[[0-9a-f]{40}\] second commit`
-
-	if !regexp.MustCompile(expect).MatchString(string(out)) {
+	if !regexp.MustCompile(expect).MatchString(out) {
 		t.Fatalf("unexpected output. expect %s, got %s", expect, out)
 	}
 
@@ -71,17 +62,14 @@ func TestCommitExcutableFiles(t *testing.T) {
 		t.Fatal("failed to chmod test file. ", err)
 	}
 
+	executeCmd(t, build+" -C "+tempdir+" add "+hello)
+
 	// act
-	cmd := `echo "commit a executable file" | ` + build + " -C " + tempdir + " commit"
-	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		t.Fatal("commit a file failed ", string(out), err)
-	}
+	out := executeCmd(t, `echo "commit a executable file" | `+build+" -C "+tempdir+" commit")
 
 	// assert
 	expect := `\[\(root-commit\) [0-9a-f]{40}\] commit a executable file`
-
-	if !regexp.MustCompile(expect).MatchString(string(out)) {
+	if !regexp.MustCompile(expect).MatchString(out) {
 		t.Fatalf("unexpected output. expect %s, got %s", expect, out)
 	}
 

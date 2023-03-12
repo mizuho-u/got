@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/mizuho-u/got/model/internal"
+	"github.com/mizuho-u/got/model/object"
 )
 
 const (
@@ -282,4 +283,13 @@ func (ie *indexEntry) serialize() []byte {
 
 	return content
 
+}
+
+func (ie *indexEntry) permission() object.Permission {
+
+	if (ie.stat.mode & 0111) == 0111 {
+		return object.ExecutableFile
+	}
+
+	return object.RegularFile
 }

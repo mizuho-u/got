@@ -56,3 +56,13 @@ func initDir(t *testing.T, build string) string {
 
 	return tempdir
 }
+
+func executeCmd(t *testing.T, cmd string) string {
+
+	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		t.Fatal("first commit failed ", string(out), err)
+	}
+
+	return string(out)
+}
