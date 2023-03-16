@@ -22,6 +22,7 @@ type Index interface {
 
 type index struct {
 	entries map[string]*indexEntry
+	parents map[string]map[string]struct{}
 }
 
 type indexOption func(*index) error
@@ -63,7 +64,7 @@ func indexSource(data io.Reader) indexOption {
 
 func newIndex(opts ...indexOption) (*index, error) {
 
-	i := &index{entries: map[string]*indexEntry{}}
+	i := &index{entries: map[string]*indexEntry{}, parents: map[string]map[string]struct{}{}}
 
 	for _, opt := range opts {
 		if err := opt(i); err != nil {
@@ -154,15 +155,58 @@ func (i *index) add(entries ...*indexEntry) {
 
 	for _, entry := range entries {
 		i.discardConflicts(entry)
-		i.entries[entry.filename] = entry
+		i.storeEntry(entry)
 	}
 
 }
 
 func (i *index) discardConflicts(e *indexEntry) {
 
+	// replacing a file with a directory
 	for _, parentDir := range internal.ParentDirs(e.filename) {
 		delete(i.entries, parentDir)
+	}
+
+	// replacing a directory with a file
+	if fs, ok := i.parents[e.filename]; ok {
+
+		for _, f := range internal.Keys(fs) {
+			i.deleteEntry(f)
+		}
+
+	}
+}
+
+func (i *index) storeEntry(e *indexEntry) {
+
+	i.entries[e.filename] = e
+	i.storeParent(e.filename)
+
+}
+
+func (i *index) deleteEntry(filename string) {
+
+	delete(i.entries, filename)
+	i.deleteParent(filename)
+
+}
+
+func (i *index) storeParent(filename string) {
+
+	for _, p := range internal.ParentDirs(filename) {
+
+		if _, ok := i.parents[p]; !ok {
+			i.parents[p] = map[string]struct{}{}
+		}
+
+		i.parents[p][filename] = struct{}{}
+	}
+}
+
+func (i *index) deleteParent(filename string) {
+
+	for _, p := range internal.ParentDirs(filename) {
+		delete(i.parents[p], filename)
 	}
 
 }
