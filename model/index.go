@@ -153,7 +153,16 @@ func readOneEntry(data io.Reader) ([]byte, error) {
 func (i *index) add(entries ...*indexEntry) {
 
 	for _, entry := range entries {
+		i.discardConflicts(entry)
 		i.entries[entry.filename] = entry
+	}
+
+}
+
+func (i *index) discardConflicts(e *indexEntry) {
+
+	for _, parentDir := range internal.ParentDirs(e.filename) {
+		delete(i.entries, parentDir)
 	}
 
 }

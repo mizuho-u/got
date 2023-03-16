@@ -4,7 +4,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
+
+	"github.com/mizuho-u/got/model/internal"
 )
 
 type Permission string
@@ -69,7 +70,7 @@ func BuildTree(entries []Entry) (*tree, error) {
 
 	root := &tree{children: []Entry{}, index: map[string]int{}}
 	for _, e := range entries {
-		root.add(parentDirs(e.fullpath()), e)
+		root.add(internal.ParentDirs(e.fullpath()), e)
 	}
 
 	if err := root.build(); err != nil {
@@ -77,22 +78,6 @@ func BuildTree(entries []Entry) (*tree, error) {
 	}
 
 	return root, nil
-}
-
-func parentDirs(path string) []string {
-
-	parentsDirs := []string{}
-	dir := filepath.Dir(path)
-	if dir == "." {
-		return []string{}
-	}
-
-	dirs := strings.Split(filepath.Dir(path), "/")
-	for i := 1; i <= len(dirs); i++ {
-		parentsDirs = append(parentsDirs, filepath.Join(dirs[0:i]...))
-	}
-
-	return parentsDirs
 }
 
 func (t *tree) add(parents []string, e Entry) {
