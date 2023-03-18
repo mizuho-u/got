@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +11,8 @@ import (
 var bin = flag.String("build", "", "the build path")
 
 func buildpath(t *testing.T) string {
+
+	t.Helper()
 
 	buildPathAbs, err := filepath.Abs(*bin)
 	if err != nil {
@@ -45,6 +46,8 @@ func createFile(t testing.TB, dir, name string, data []byte) string {
 
 func initDir(t *testing.T, build string) string {
 
+	t.Helper()
+
 	tempdir := t.TempDir()
 
 	_, err := exec.Command(build, "init", tempdir).Output()
@@ -52,12 +55,12 @@ func initDir(t *testing.T, build string) string {
 		t.Fatal("init repository failed ", err)
 	}
 
-	log.Println(tempdir)
-
 	return tempdir
 }
 
 func executeCmd(t *testing.T, cmd string) string {
+
+	t.Helper()
 
 	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
 	if err != nil {
