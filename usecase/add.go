@@ -14,7 +14,7 @@ func Add(ctx GotContext, paths ...string) error {
 
 	filepaths, err := internal.ListFilepathsRecursively(paths, ctx.GotRoot())
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	files := []*model.File{}
@@ -22,18 +22,18 @@ func Add(ctx GotContext, paths ...string) error {
 
 		stat, err := internal.FileStat(path)
 		if err != nil {
-			return err
+			return wrap(err)
 		}
 
 		data, err := internal.ReadFile(path)
 		if err != nil {
-			return err
+			return wrap(err)
 		}
 
 		relpath, err := filepath.Rel(ctx.WorkspaceRoot(), path)
 		if err != nil {
 			log.Println(ctx.WorkspaceRoot(), path)
-			return err
+			return wrap(err)
 		}
 
 		files = append(files, &model.File{
@@ -58,7 +58,7 @@ func Add(ctx GotContext, paths ...string) error {
 
 	ws, err := model.NewWorkspace(opt...)
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 	ws.Add(files...)
 

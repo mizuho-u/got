@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
@@ -22,7 +21,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("add called")
 
 		if len(args) == 0 {
 			return errors.New("specify filepaths to be added")

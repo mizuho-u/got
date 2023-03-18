@@ -105,6 +105,28 @@ func TestModifyTheIndex(t *testing.T) {
 
 }
 
+func TestAddNonExistentFile(t *testing.T) {
+
+	build := buildpath(t)
+	tempdir := t.TempDir()
+
+	_, err := exec.Command(build, "init", tempdir).Output()
+	if err != nil {
+		t.Fatal("init repository failed ", err)
+	}
+
+	out, err := exec.Command(build, "-C", tempdir, "add", "/path/to/non/existent/file").CombinedOutput()
+	if err == nil {
+		t.Fatal("expect err but nil")
+	}
+
+	expectMsg := "Error: did not match any files stat /path/to/non/existent/file: no such file or directory\n"
+	if string(out) != expectMsg {
+		t.Fatalf("expect error message %s, got %s", expectMsg, out)
+	}
+
+}
+
 func testlsfiles(t *testing.T, dir string, expect string) {
 
 	t.Helper()

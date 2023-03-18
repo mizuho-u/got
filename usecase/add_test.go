@@ -2,6 +2,8 @@ package usecase_test
 
 import (
 	"bytes"
+	"errors"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -75,6 +77,19 @@ func TestModifyTheIndex(t *testing.T) {
 
 	// assert
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
+
+}
+
+func TestAddNonExistentFile(t *testing.T) {
+
+	dir := initDir(t)
+
+	out := &bytes.Buffer{}
+	err := usecase.Add(newContext(dir, out, out), "/path/to/non/existent/file")
+
+	if !errors.Is(err, usecase.ErrMissingFile) {
+		t.Fatalf("expect error %s got %s", os.ErrNotExist, err)
+	}
 
 }
 
