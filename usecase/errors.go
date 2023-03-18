@@ -11,13 +11,38 @@ var (
 	ErrUknown      error = errors.New("unknown err")
 )
 
-func wrap(e error) error {
+var _ error = &Error{}
+
+type Error struct {
+	e   error
+	msg string
+}
+
+func wrap(e error, msg string) *Error {
+
+	newerr := &Error{}
+
+	newerr.msg = msg
 
 	switch {
 	case errors.Is(e, syscall.ENOENT):
-		return fmt.Errorf("%w %w", ErrMissingFile, e)
+		newerr.e = fmt.Errorf("%w %w", ErrMissingFile, e)
 	default:
-		return fmt.Errorf("%w %w", ErrUknown, e)
+		newerr.e = fmt.Errorf("%w %w", ErrUknown, e)
 	}
 
+	return newerr
+}
+
+func (e *Error) Is(target error) bool {
+	return errors.Is(e.e, target)
+}
+
+func (e *Error) Error() string {
+
+	if e.msg != "" {
+		return e.msg
+	}
+
+	return e.e.Error()
 }

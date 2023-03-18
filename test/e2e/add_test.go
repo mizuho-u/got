@@ -116,11 +116,11 @@ func TestAddNonExistentFile(t *testing.T) {
 	}
 
 	out, err := exec.Command(build, "-C", tempdir, "add", "/path/to/non/existent/file").CombinedOutput()
-	if err == nil {
-		t.Fatal("expect err but nil")
+	if err != nil {
+		t.Fatalf("exec command failed %s", err)
 	}
 
-	expectMsg := "Error: did not match any files stat /path/to/non/existent/file: no such file or directory\n"
+	expectMsg := "fatal: pathspec '/path/to/non/existent/file' did not match any files"
 	if string(out) != expectMsg {
 		t.Fatalf("expect error message %s, got %s", expectMsg, out)
 	}

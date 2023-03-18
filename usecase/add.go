@@ -1,9 +1,11 @@
 package usecase
 
 import (
+	"errors"
+	"fmt"
 	"io/fs"
-	"log"
 	"path/filepath"
+	"syscall"
 
 	"github.com/mizuho-u/got/database"
 	"github.com/mizuho-u/got/model"
@@ -12,28 +14,78 @@ import (
 
 func Add(ctx GotContext, paths ...string) error {
 
-	filepaths, err := internal.ListFilepathsRecursively(paths, ctx.GotRoot())
+	index, err := database.OpenIndexForUpdate(ctx.GotRoot())
 	if err != nil {
-		return wrap(err)
+		return err
+	}
+	defer index.Close()
+
+	objects := database.NewObjects(ctx.GotRoot())
+
+	opt := []model.WorkspaceOption{}
+	if !index.IsNew() {
+		opt = append(opt, model.WithIndex(index))
+	}
+	ws, err := model.NewWorkspace(opt...)
+	if err != nil {
+		return wrap(err, "")
+	}
+
+	for _, path := range paths {
+
+		files, err := readFilesToAdd(ctx.WorkspaceRoot(), path, ctx.GotRoot())
+		switch {
+		case errors.Is(err, syscall.ENOENT):
+			return wrap(err, fmt.Sprintf("fatal: pathspec '%s' did not match any files", path))
+		case err != nil:
+			return wrap(err, "")
+		}
+
+		for _, f := range files {
+
+			blob, err := ws.Add(f)
+			if err != nil {
+				return wrap(err, "")
+			}
+
+			objects.Store(blob)
+		}
+
+	}
+
+	if err := index.Update(ws.Index()); err != nil {
+		return wrap(err, "")
+	}
+
+	return nil
+}
+
+func readFilesToAdd(workspaceRoot, path, ignore string) ([]*model.File, error) {
+
+	paths := []string{}
+	paths = append(paths, path)
+
+	filepaths, err := internal.ListFilepathsRecursively(paths, ignore)
+	if err != nil {
+		return nil, err
 	}
 
 	files := []*model.File{}
-	for _, path := range filepaths {
+	for _, p := range filepaths {
 
-		stat, err := internal.FileStat(path)
+		stat, err := internal.FileStat(p)
 		if err != nil {
-			return wrap(err)
+			return nil, err
 		}
 
-		data, err := internal.ReadFile(path)
+		data, err := internal.ReadFile(p)
 		if err != nil {
-			return wrap(err)
+			return nil, err
 		}
 
-		relpath, err := filepath.Rel(ctx.WorkspaceRoot(), path)
+		relpath, err := filepath.Rel(workspaceRoot, p)
 		if err != nil {
-			log.Println(ctx.WorkspaceRoot(), path)
-			return wrap(err)
+			return nil, err
 		}
 
 		files = append(files, &model.File{
@@ -45,27 +97,6 @@ func Add(ctx GotContext, paths ...string) error {
 
 	}
 
-	index, err := database.OpenIndexForUpdate(ctx.GotRoot())
-	if err != nil {
-		return err
-	}
-	defer index.Close()
+	return files, nil
 
-	opt := []model.WorkspaceOption{}
-	if !index.IsNew() {
-		opt = append(opt, model.WithIndex(index))
-	}
-
-	ws, err := model.NewWorkspace(opt...)
-	if err != nil {
-		return wrap(err)
-	}
-	ws.Add(files...)
-
-	objects := database.NewObjects(ctx.GotRoot())
-	objects.StoreAll(ws.Objects()...)
-
-	index.Update(ws.Index())
-
-	return nil
 }

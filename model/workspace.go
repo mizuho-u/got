@@ -80,21 +80,17 @@ func (w *workspace) Commit(parent, author, email, message string, now time.Time)
 
 }
 
-func (w *workspace) Add(files ...*File) error {
+func (w *workspace) Add(f *File) (object.Object, error) {
 
-	for _, f := range files {
-
-		blob, err := object.NewBlob(f.Name, f.Data)
-		if err != nil {
-			return err
-		}
-		w.objects = append(w.objects, blob)
-
-		w.index.add(NewIndexEntry(f.Name, blob.OID(), f.Stat))
-
+	blob, err := object.NewBlob(f.Name, f.Data)
+	if err != nil {
+		return nil, err
 	}
+	w.objects = append(w.objects, blob)
 
-	return nil
+	w.index.add(NewIndexEntry(f.Name, blob.OID(), f.Stat))
+
+	return blob, err
 }
 
 func (w *workspace) Objects() []object.Object {
