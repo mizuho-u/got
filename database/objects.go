@@ -10,15 +10,15 @@ import (
 	"github.com/mizuho-u/got/model/object"
 )
 
-type Objects struct {
+type objects struct {
 	gotpath string
 }
 
-func NewObjects(gotpath string) *Objects {
-	return &Objects{gotpath: gotpath}
+func NewObjects(gotpath string) *objects {
+	return &objects{gotpath: gotpath}
 }
 
-func (s *Objects) Store(o object.Object) error {
+func (s *objects) Store(o object.Object) error {
 
 	path := filepath.Join(s.gotpath, "objects", o.OID()[0:2], o.OID()[2:])
 	if s.isExist(path) {
@@ -33,7 +33,7 @@ func (s *Objects) Store(o object.Object) error {
 	return s.create(path, compressed)
 }
 
-func (s *Objects) isExist(path string) bool {
+func (s *objects) isExist(path string) bool {
 
 	// the path exists if err is nil
 	if _, err := os.Stat(path); err == nil {
@@ -44,7 +44,7 @@ func (s *Objects) isExist(path string) bool {
 
 }
 
-func (s *Objects) create(path string, data []byte) error {
+func (s *objects) create(path string, data []byte) error {
 
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
@@ -62,7 +62,7 @@ func (s *Objects) create(path string, data []byte) error {
 	return os.Rename(temp.Name(), path)
 }
 
-func (s *Objects) compress(data []byte) ([]byte, error) {
+func (s *objects) compress(data []byte) ([]byte, error) {
 
 	var b bytes.Buffer
 
@@ -83,7 +83,7 @@ func (s *Objects) compress(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (s *Objects) StoreAll(objects ...object.Object) error {
+func (s *objects) StoreAll(objects ...object.Object) error {
 
 	for _, o := range objects {
 		if err := s.Store(o); err != nil {

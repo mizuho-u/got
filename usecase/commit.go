@@ -12,18 +12,20 @@ import (
 
 func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 
-	index, err := database.OpenIndexForRead(ctx.GotRoot())
+	var repo database.Repository = database.NewFS(ctx.GotRoot())
+	defer repo.Close()
+
+	err := repo.Index().OpenForRead()
 	if err != nil {
 		return 128
 	}
 
-	ws, err := model.NewWorkspace(model.WithIndex(index))
+	ws, err := model.NewWorkspace(model.WithIndex(repo.Index()))
 	if err != nil {
 		return 128
 	}
 
-	refs := database.NewRefs(ctx.GotRoot())
-	parent, err := refs.HEAD()
+	parent, err := repo.Refs().HEAD()
 	if err != nil {
 		return 128
 	}
@@ -33,10 +35,7 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	objects := database.NewObjects(ctx.GotRoot())
-	objects.StoreAll(ws.Objects()...)
-
-	if err := refs.UpdateHEAD(commitId); err != nil {
+	if err := repo.Refs().UpdateHEAD(commitId); err != nil {
 		return 128
 	}
 

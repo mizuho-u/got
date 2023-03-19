@@ -11,17 +11,17 @@ import (
 
 func Add(ctx GotContext, paths ...string) ExitCode {
 
-	index, err := database.OpenIndexForUpdate(ctx.GotRoot())
+	var repo database.Repository = database.NewFS(ctx.GotRoot())
+	defer repo.Close()
+
+	err := repo.Index().OpenForUpdate()
 	if err != nil {
 		return 128
 	}
-	defer index.Close()
-
-	objects := database.NewObjects(ctx.GotRoot())
 
 	opt := []model.WorkspaceOption{}
-	if !index.IsNew() {
-		opt = append(opt, model.WithIndex(index))
+	if !repo.Index().IsNew() {
+		opt = append(opt, model.WithIndex(repo.Index()))
 	}
 	ws, err := model.NewWorkspace(opt...)
 	if err != nil {
@@ -45,12 +45,12 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 				return 128
 			}
 
-			objects.Store(blob)
+			repo.Objects().Store(blob)
 		}
 
 	}
 
-	if err := index.Update(ws.Index()); err != nil {
+	if err := repo.Index().Update(ws.Index()); err != nil {
 		ctx.OutError(err)
 		return 128
 	}
