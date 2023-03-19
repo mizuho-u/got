@@ -1,11 +1,8 @@
 package usecase
 
 import (
-	"errors"
-	"fmt"
 	"io/fs"
 	"path/filepath"
-	"syscall"
 
 	"github.com/mizuho-u/got/database"
 	"github.com/mizuho-u/got/model"
@@ -28,24 +25,21 @@ func Add(ctx GotContext, paths ...string) error {
 	}
 	ws, err := model.NewWorkspace(opt...)
 	if err != nil {
-		return wrap(err, "")
+		return err
 	}
 
 	for _, path := range paths {
 
-		files, err := readFilesToAdd(ctx.WorkspaceRoot(), path, ctx.GotRoot())
-		switch {
-		case errors.Is(err, syscall.ENOENT):
-			return wrap(err, fmt.Sprintf("fatal: pathspec '%s' did not match any files", path))
-		case err != nil:
-			return wrap(err, "")
+		files, err := readFilesToAdd(ctx, path)
+		if err != nil {
+			return err
 		}
 
 		for _, f := range files {
 
 			blob, err := ws.Add(f)
 			if err != nil {
-				return wrap(err, "")
+				return err
 			}
 
 			objects.Store(blob)
@@ -54,18 +48,18 @@ func Add(ctx GotContext, paths ...string) error {
 	}
 
 	if err := index.Update(ws.Index()); err != nil {
-		return wrap(err, "")
+		return err
 	}
 
 	return nil
 }
 
-func readFilesToAdd(workspaceRoot, path, ignore string) ([]*model.File, error) {
+func readFilesToAdd(ctx GotContext, path string) ([]*model.File, error) {
 
 	paths := []string{}
 	paths = append(paths, path)
 
-	filepaths, err := internal.ListFilepathsRecursively(paths, ignore)
+	filepaths, err := internal.ListFilepathsRecursively(paths, ctx.GotRoot())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +77,7 @@ func readFilesToAdd(workspaceRoot, path, ignore string) ([]*model.File, error) {
 			return nil, err
 		}
 
-		relpath, err := filepath.Rel(workspaceRoot, p)
+		relpath, err := filepath.Rel(ctx.WorkspaceRoot(), p)
 		if err != nil {
 			return nil, err
 		}

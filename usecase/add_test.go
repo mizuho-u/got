@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"syscall"
 	"testing"
 
 	"github.com/mizuho-u/got/usecase"
@@ -87,8 +88,26 @@ func TestAddNonExistentFile(t *testing.T) {
 	out := &bytes.Buffer{}
 	err := usecase.Add(newContext(dir, out, out), "/path/to/non/existent/file")
 
-	if !errors.Is(err, usecase.ErrMissingFile) {
+	if !errors.Is(err, syscall.ENOENT) {
 		t.Fatalf("expect error %s got %s", os.ErrNotExist, err)
+	}
+
+}
+
+func TestAddUnreadbleFiles(t *testing.T) {
+
+	dir := initDir(t)
+	f1 := createFile(t, dir, "hello.txt", []byte("hello.\n"))
+
+	if err := os.Chmod(f1, 0111); err != nil {
+		t.Fatal("chmod failed ", err)
+	}
+
+	out := &bytes.Buffer{}
+	err := usecase.Add(newContext(dir, out, out), f1)
+
+	if !errors.Is(err, syscall.EACCES) {
+		t.Fatalf("expect error %s got %s", usecase.ErrNoPermission, err)
 	}
 
 }

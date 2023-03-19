@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 )
@@ -116,17 +118,43 @@ func TestAddNonExistentFile(t *testing.T) {
 	}
 
 	out, err := exec.Command(build, "-C", tempdir, "add", "/path/to/non/existent/file").CombinedOutput()
-	if err != nil {
-		t.Fatalf("exec command failed %s", err)
+	if err == nil {
+		t.Fatal("expect error, got nil")
 	}
 
-	expectMsg := "fatal: pathspec '/path/to/non/existent/file' did not match any files"
+	expectMsg := "Error: stat /path/to/non/existent/file: no such file or directory\n"
 	if string(out) != expectMsg {
 		t.Fatalf("expect error message %s, got %s", expectMsg, out)
 	}
 
 }
 
+func TestAddUnreadbleFiles(t *testing.T) {
+
+	build := buildpath(t)
+	tempdir := t.TempDir()
+
+	_, err := exec.Command(build, "init", tempdir).Output()
+	if err != nil {
+		t.Fatal("init repository failed ", err)
+	}
+
+	f1 := createFile(t, tempdir, "hello.txt", []byte("hello.\n"))
+	if err := os.Chmod(f1, 0111); err != nil {
+		t.Fatal("chmod failed ", err)
+	}
+
+	out, err := exec.Command(build, "-C", tempdir, "add", f1).CombinedOutput()
+	if err == nil {
+		t.Fatal("expect error, got nil")
+	}
+
+	expectMsg := fmt.Sprintf("Error: open %s: permission denied\n", f1)
+	if string(out) != expectMsg {
+		t.Fatalf("expect error message %s, got %s", expectMsg, out)
+	}
+
+}
 func testlsfiles(t *testing.T, dir string, expect string) {
 
 	t.Helper()
