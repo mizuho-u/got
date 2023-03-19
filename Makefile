@@ -6,7 +6,11 @@ build: $(shell find . -type f -name '*.go' -print)
 
 .PHONY:	test
 test:
-	go test -v `go list ./... | grep -v github.com/mizuho-u/got/test/e2e` -cover
+	go test `go list ./... | grep -v github.com/mizuho-u/got/test/e2e` -cover
 
+.PHONY:	e2etest
 e2etest: build
-	go test -v github.com/mizuho-u/got/test/e2e -args -build $(OUTPUT_DIR)
+	go test github.com/mizuho-u/got/test/e2e -args -build $(OUTPUT_DIR)
+
+.PHONY: fulltest
+fulltest: test e2etest
