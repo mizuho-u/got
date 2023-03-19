@@ -8,5 +8,5 @@ build: $(shell find . -type f -name '*.go' -print)
 test:
 	go test -v `go list ./... | grep -v github.com/mizuho-u/got/test/e2e` -cover
 
-e2e-test: build
+e2etest: build
 	go test -v github.com/mizuho-u/got/test/e2e -args -build $(OUTPUT_DIR)
