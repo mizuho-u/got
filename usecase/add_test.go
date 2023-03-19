@@ -103,6 +103,18 @@ func TestAddUnreadbleFiles(t *testing.T) {
 
 }
 
+func TestOtherProcessesLockingTheIndex(t *testing.T) {
+
+	dir := initDir(t)
+	f1 := createFile(t, dir, ".git/index.lock", []byte(""))
+
+	out := &bytes.Buffer{}
+	code := usecase.Add(newContext(dir, out, out), f1)
+
+	testExitCode(t, 128, code)
+
+}
+
 func testlsfiles(t *testing.T, dir string, expect string) {
 
 	t.Helper()
