@@ -122,7 +122,7 @@ func TestAddNonExistentFile(t *testing.T) {
 		t.Fatal("expect error, got nil")
 	}
 
-	expectMsg := "Error: stat /path/to/non/existent/file: no such file or directory\n"
+	expectMsg := "stat /path/to/non/existent/file: no such file or directory"
 	if string(out) != expectMsg {
 		t.Fatalf("expect error message %s, got %s", expectMsg, out)
 	}
@@ -149,7 +149,7 @@ func TestAddUnreadbleFiles(t *testing.T) {
 		t.Fatal("expect error, got nil")
 	}
 
-	expectMsg := fmt.Sprintf("Error: open %s: permission denied\n", f1)
+	expectMsg := fmt.Sprintf("open %s: permission denied", f1)
 	if string(out) != expectMsg {
 		t.Fatalf("expect error message %s, got %s", expectMsg, out)
 	}

@@ -53,12 +53,12 @@ func init() {
 
 const gotdir string = ".git"
 
-func newContext(workspace string, cmd *cobra.Command) (usecase.GotContext, error) {
+func mustNewContext(workspace string, cmd *cobra.Command) usecase.GotContext {
 
 	if workspace == "" {
 		wd, err := os.Getwd()
 		if err != nil {
-			return nil, err
+			panic(err)
 		}
 
 		workspace = wd
@@ -68,11 +68,11 @@ func newContext(workspace string, cmd *cobra.Command) (usecase.GotContext, error
 
 		abs, err := filepath.Abs(workspace)
 		if err != nil {
-			return nil, err
+			panic(err)
 		}
 
 		workspace = abs
 	}
 
-	return usecase.NewContext(context.Background(), workspace, gotdir, cmd.OutOrStdout(), cmd.OutOrStderr()), nil
+	return usecase.NewContext(context.Background(), workspace, gotdir, cmd.OutOrStdout(), cmd.OutOrStderr())
 }

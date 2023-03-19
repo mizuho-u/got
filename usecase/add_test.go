@@ -2,10 +2,8 @@ package usecase_test
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"os/exec"
-	"syscall"
 	"testing"
 
 	"github.com/mizuho-u/got/usecase"
@@ -18,8 +16,8 @@ func TestAddSingleFile(t *testing.T) {
 	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f); err != nil {
-		t.Fatal(err)
+	if code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f); code != 0 {
+		t.Fatal("expect exit code 0, got ", code)
 	}
 
 	// assert
@@ -35,11 +33,10 @@ func TestAddMultipleFiles(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1, f2); err != nil {
-		t.Fatal(err)
-	}
+	code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1, f2)
 
 	// assert
+	testExitCode(t, 0, code)
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
 
 }
@@ -52,11 +49,10 @@ func TestAddFilesFromDirectory(t *testing.T) {
 	createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), dir); err != nil {
-		t.Fatal(err)
-	}
+	code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), dir)
 
 	// assert
+	testExitCode(t, 0, code)
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
 
 }
@@ -69,12 +65,11 @@ func TestModifyTheIndex(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1); err != nil {
-		t.Fatal(err)
-	}
-	if err := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f2); err != nil {
-		t.Fatal(err)
-	}
+	code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1)
+	testExitCode(t, 0, code)
+
+	code = usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f2)
+	testExitCode(t, 0, code)
 
 	// assert
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
@@ -86,11 +81,9 @@ func TestAddNonExistentFile(t *testing.T) {
 	dir := initDir(t)
 
 	out := &bytes.Buffer{}
-	err := usecase.Add(newContext(dir, out, out), "/path/to/non/existent/file")
+	code := usecase.Add(newContext(dir, out, out), "/path/to/non/existent/file")
 
-	if !errors.Is(err, syscall.ENOENT) {
-		t.Fatalf("expect error %s got %s", os.ErrNotExist, err)
-	}
+	testExitCode(t, 128, code)
 
 }
 
@@ -104,11 +97,9 @@ func TestAddUnreadbleFiles(t *testing.T) {
 	}
 
 	out := &bytes.Buffer{}
-	err := usecase.Add(newContext(dir, out, out), f1)
+	code := usecase.Add(newContext(dir, out, out), f1)
 
-	if !errors.Is(err, syscall.EACCES) {
-		t.Fatalf("expect error %s got %s", usecase.ErrNoPermission, err)
-	}
+	testExitCode(t, 128, code)
 
 }
 

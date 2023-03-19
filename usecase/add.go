@@ -9,11 +9,11 @@ import (
 	"github.com/mizuho-u/got/usecase/internal"
 )
 
-func Add(ctx GotContext, paths ...string) error {
+func Add(ctx GotContext, paths ...string) ExitCode {
 
 	index, err := database.OpenIndexForUpdate(ctx.GotRoot())
 	if err != nil {
-		return err
+		return 128
 	}
 	defer index.Close()
 
@@ -25,21 +25,24 @@ func Add(ctx GotContext, paths ...string) error {
 	}
 	ws, err := model.NewWorkspace(opt...)
 	if err != nil {
-		return err
+		ctx.OutError(err)
+		return 128
 	}
 
 	for _, path := range paths {
 
 		files, err := readFilesToAdd(ctx, path)
 		if err != nil {
-			return err
+			ctx.OutError(err)
+			return 128
 		}
 
 		for _, f := range files {
 
 			blob, err := ws.Add(f)
 			if err != nil {
-				return err
+				ctx.OutError(err)
+				return 128
 			}
 
 			objects.Store(blob)
@@ -48,10 +51,11 @@ func Add(ctx GotContext, paths ...string) error {
 	}
 
 	if err := index.Update(ws.Index()); err != nil {
-		return err
+		ctx.OutError(err)
+		return 128
 	}
 
-	return nil
+	return 0
 }
 
 func readFilesToAdd(ctx GotContext, path string) ([]*model.File, error) {

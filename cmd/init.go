@@ -20,23 +20,14 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 
 		var path string
 		if len(os.Args) == 3 {
 			path = os.Args[2]
 		}
 
-		ctx, err := newContext(path, cmd)
-		if err != nil {
-			return err
-		}
-
-		if err := usecase.InitDir(ctx); err != nil {
-			return err
-		}
-
-		return nil
+		os.Exit(int(usecase.InitDir(mustNewContext(path, cmd))))
 	},
 }
 
