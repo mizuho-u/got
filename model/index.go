@@ -18,6 +18,7 @@ const (
 
 type Index interface {
 	Serialize() ([]byte, error)
+	Tracked(name string) bool
 }
 
 type index struct {
@@ -238,6 +239,14 @@ func (i *index) Serialize() ([]byte, error) {
 	content = append(content, packed...)
 
 	return content, nil
+}
+
+func (i *index) Tracked(name string) bool {
+
+	_, inEntries := i.entries[name]
+	_, inParents := i.parents[name]
+
+	return inEntries || inParents
 }
 
 type indexEntry struct {
