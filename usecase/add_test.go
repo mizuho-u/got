@@ -16,7 +16,7 @@ func TestAddSingleFile(t *testing.T) {
 	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
 	// act
-	if code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f); code != 0 {
+	if code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f); code != 0 {
 		t.Fatal("expect exit code 0, got ", code)
 	}
 
@@ -33,7 +33,7 @@ func TestAddMultipleFiles(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1, f2)
+	code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f1, f2)
 
 	// assert
 	testExitCode(t, 0, code)
@@ -49,7 +49,7 @@ func TestAddFilesFromDirectory(t *testing.T) {
 	createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), dir)
+	code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), dir)
 
 	// assert
 	testExitCode(t, 0, code)
@@ -65,10 +65,10 @@ func TestModifyTheIndex(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	code := usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f1)
+	code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f1)
 	testExitCode(t, 0, code)
 
-	code = usecase.Add(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}), f2)
+	code = usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f2)
 	testExitCode(t, 0, code)
 
 	// assert
@@ -81,7 +81,7 @@ func TestAddNonExistentFile(t *testing.T) {
 	dir := initDir(t)
 
 	out := &bytes.Buffer{}
-	code := usecase.Add(newContext(dir, out, out), "/path/to/non/existent/file")
+	code := usecase.Add(newContext(dir, "", "", out, out), "/path/to/non/existent/file")
 
 	testExitCode(t, 128, code)
 
@@ -97,7 +97,7 @@ func TestAddUnreadbleFiles(t *testing.T) {
 	}
 
 	out := &bytes.Buffer{}
-	code := usecase.Add(newContext(dir, out, out), f1)
+	code := usecase.Add(newContext(dir, "", "", out, out), f1)
 
 	testExitCode(t, 128, code)
 
@@ -109,7 +109,7 @@ func TestOtherProcessesLockingTheIndex(t *testing.T) {
 	f1 := createFile(t, dir, ".git/index.lock", []byte(""))
 
 	out := &bytes.Buffer{}
-	code := usecase.Add(newContext(dir, out, out), f1)
+	code := usecase.Add(newContext(dir, "", "", out, out), f1)
 
 	testExitCode(t, 128, code)
 

@@ -74,5 +74,5 @@ func mustNewContext(workspace string, cmd *cobra.Command) usecase.GotContext {
 		workspace = abs
 	}
 
-	return usecase.NewContext(context.Background(), workspace, gotdir, cmd.OutOrStdout(), cmd.OutOrStderr())
+	return usecase.NewContext(context.Background(), workspace, gotdir, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), cmd.OutOrStdout(), cmd.OutOrStderr())
 }

@@ -24,7 +24,7 @@ func TestInitDir(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	// act
-	code := usecase.InitDir(newContext(dir, out, out))
+	code := usecase.InitDir(newContext(dir, "", "", out, out))
 	testExitCode(t, 0, code)
 
 	// assert
@@ -52,7 +52,7 @@ func initDir(t testing.TB) string {
 
 	dir := t.TempDir()
 
-	code := usecase.InitDir(newContext(dir, &bytes.Buffer{}, &bytes.Buffer{}))
+	code := usecase.InitDir(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}))
 	testExitCode(t, 0, code)
 
 	return dir
@@ -94,8 +94,8 @@ func createDir(t testing.TB, dir, name string) {
 
 }
 
-func newContext(dir string, out, outErr io.Writer) usecase.GotContext {
-	return usecase.NewContext(context.Background(), dir, ".git", out, outErr)
+func newContext(dir, username, email string, out, outErr io.Writer) usecase.GotContext {
+	return usecase.NewContext(context.Background(), dir, ".git", username, email, out, outErr)
 }
 
 func testExitCode(t testing.TB, expect, got usecase.ExitCode) {

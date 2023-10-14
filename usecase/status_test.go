@@ -17,7 +17,7 @@ func TestStatus(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	out := &bytes.Buffer{}
-	if code := usecase.Status(newContext(dir, out, out)); code != 0 {
+	if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
 		t.Fatal("expect exit code 0, got ", code)
 	}
 
@@ -35,19 +35,19 @@ func TestStatusIndex(t *testing.T) {
 	f1 := createFile(t, dir, "hello.txt", []byte("hello.\n"))
 
 	out := &bytes.Buffer{}
-	if code := usecase.Add(newContext(dir, out, out), f1); code != 0 {
+	if code := usecase.Add(newContext(dir, "", "", out, out), f1); code != 0 {
 		t.Fatal(out)
 	}
 
 	out.Reset()
-	if code := usecase.Commit(newContext(dir, out, out), "commit message", time.Unix(1677142145, 0)); code != 0 {
+	if code := usecase.Commit(newContext(dir, "", "", out, out), "commit message", time.Unix(1677142145, 0)); code != 0 {
 		t.Fatal(out)
 	}
 
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	out.Reset()
-	if code := usecase.Status(newContext(dir, out, out)); code != 0 {
+	if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
 		t.Fatal("expect exit code 0, got ", code)
 	}
 
@@ -121,7 +121,7 @@ func TestStatusUntrackedDirectories(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, out, out)); code != 0 {
+			if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
 				t.Error("expect exit code 0, got ", code)
 			}
 

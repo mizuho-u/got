@@ -10,6 +10,9 @@ type GotContext interface {
 	c.Context
 	WorkspaceRoot() string
 	GotRoot() string
+	Username() string
+	Email() string
+
 	Out(string) error
 	OutError(error) error
 }
@@ -18,12 +21,14 @@ type gotContext struct {
 	c.Context
 	workspaceRoot string
 	gotRoot       string
+	username      string
+	email         string
 	w             io.Writer
 	e             io.Writer
 }
 
-func NewContext(ctx c.Context, workspaceRoot, gotroot string, out io.Writer, err io.Writer) GotContext {
-	return &gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot), out, err}
+func NewContext(ctx c.Context, workspaceRoot, gotroot, username, email string, out io.Writer, err io.Writer) GotContext {
+	return &gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot), username, email, out, err}
 }
 
 func (g *gotContext) WorkspaceRoot() string {
@@ -32,6 +37,14 @@ func (g *gotContext) WorkspaceRoot() string {
 
 func (g *gotContext) GotRoot() string {
 	return g.gotRoot
+}
+
+func (g *gotContext) Username() string {
+	return g.username
+}
+
+func (g *gotContext) Email() string {
+	return g.email
 }
 
 func (g *gotContext) Out(msg string) error {

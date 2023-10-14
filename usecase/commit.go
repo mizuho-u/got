@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -30,7 +29,7 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	commitId, err := ws.Commit(parent, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), commitMessage, now)
+	commitId, err := ws.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
 	if err != nil {
 		return 128
 	}
