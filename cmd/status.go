@@ -5,8 +5,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
+	"os"
 
+	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +22,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("status called")
+
+		workspace, _ := cmd.Flags().GetString("path")
+
+		os.Exit(int(usecase.Status(mustNewContext(workspace, cmd))))
 	},
 }
 

@@ -27,6 +27,8 @@ func createFile(t testing.TB, dir, name string, data []byte) string {
 
 	t.Helper()
 
+	createDir(t, dir, filepath.Dir(name))
+
 	file, err := os.Create(filepath.Join(dir, name))
 	if err != nil {
 		t.Fatal("failed to create test file. ", err)
@@ -41,6 +43,16 @@ func createFile(t testing.TB, dir, name string, data []byte) string {
 	}
 
 	return file.Name()
+
+}
+
+func createDir(t testing.TB, dir, name string) {
+
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Join(dir, name), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
 
 }
 
