@@ -2,12 +2,13 @@ package usecase
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
 
 	"github.com/mizuho-u/got/database"
 	"github.com/mizuho-u/got/model"
 	"github.com/mizuho-u/got/usecase/internal"
+
+	gotinternal "github.com/mizuho-u/got/internal"
 )
 
 func Status(ctx GotContext) ExitCode {
@@ -36,25 +37,28 @@ func Status(ctx GotContext) ExitCode {
 		return 128
 	}
 
-	untracked := []string{}
-
+	untrackedSet := map[string]struct{}{}
 	for _, p := range paths {
 
 		if ws.Index().Tracked(p) {
 			continue
 		}
 
-		if p == filepath.Base(p) {
-			untracked = append(untracked, p)
-			continue
+		entry := p
+		for _, d := range gotinternal.ParentDirs(p) {
+
+			if !ws.Index().Tracked(d) {
+				entry = d + "/"
+				break
+			}
 		}
 
-		if ws.Index().Tracked(filepath.Dir(p)) {
-			untracked = append(untracked, p)
-		} else {
-			untracked = append(untracked, filepath.Dir(p)+"/")
-		}
+		untrackedSet[entry] = struct{}{}
+	}
 
+	untracked := make([]string, 0, len(untrackedSet))
+	for k := range untrackedSet {
+		untracked = append(untracked, k)
 	}
 
 	sort.SliceStable(untracked, func(i, j int) bool {

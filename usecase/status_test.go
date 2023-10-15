@@ -84,17 +84,11 @@ func TestStatusUntrackedDirectories(t *testing.T) {
 			dirs:        []string{"outer"},
 			expect:      "",
 		},
-		// todo
-		// {
-		// 	description: "lists untracked directories that indirectly contain files",
-		// 	files:       []string{"outer/inner/file.txt"},
-		// 	expect:      "?? outer/\n",
-		// },
-		// {
-		// 	description: "lists untracked directories that indirectly contain files",
-		// 	files:       []string{"outer/file.txt", "outer/inner/file.txt"},
-		// 	expect:      "?? outer/\n",
-		// },
+		{
+			description: "lists untracked directories that indirectly contain files",
+			files:       []string{"outer/file.txt", "outer/inner/file.txt", "outer2/inner2/innerinnner2/file2.txt"},
+			expect:      "?? outer/\n?? outer2/\n",
+		},
 	}
 
 	for _, tc := range testt {
