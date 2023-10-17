@@ -1,14 +1,24 @@
 package database
 
+import (
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/mizuho-u/got/internal"
+	"github.com/mizuho-u/got/model"
+)
+
 type FS struct {
-	root    string
+	wsroot  string
+	gotroot string
 	refs    *refs
 	objects *objects
 	index   *index
 }
 
-func NewFS(root string) *FS {
-	return &FS{root: root, refs: NewRefs(root), objects: NewObjects(root), index: newIndex(root)}
+func NewFS(wsroot, gotroot string) *FS {
+	return &FS{wsroot: wsroot, gotroot: gotroot, refs: NewRefs(gotroot), objects: NewObjects(gotroot), index: newIndex(gotroot)}
 }
 
 func (fs *FS) Refs() Refs {
@@ -25,4 +35,93 @@ func (fs *FS) Index() Index {
 
 func (fs *FS) Close() error {
 	return fs.index.Close()
+}
+
+func (fs *FS) Scan() model.WorkspaceScanner {
+	return newFileScanner(fs.wsroot, fs.gotroot)
+}
+
+type file struct {
+	name string
+	size int64
+}
+
+func (f *file) Name() string {
+	return f.name
+}
+
+func (f *file) Size() int64 {
+	return f.size
+}
+
+func (f *file) Parents() []string {
+
+	parentsDirs := []string{}
+	dir := filepath.Dir(f.name)
+	if dir == "." {
+		return []string{}
+	}
+
+	dirs := strings.Split(filepath.Dir(f.name), "/")
+	for i := 1; i <= len(dirs); i++ {
+		parentsDirs = append(parentsDirs, filepath.Join(dirs[0:i]...))
+	}
+
+	return parentsDirs
+
+}
+
+type fileScanner struct {
+	root   string
+	ignore string
+	files  internal.Queue[*file]  // rootからのrelpath
+	dirs   internal.Queue[string] // fullpath
+}
+
+func newFileScanner(dir, ignore string) *fileScanner {
+	return &fileScanner{root: dir, ignore: ignore, files: internal.Queue[*file]{}, dirs: internal.Queue[string]{dir}}
+}
+
+func (fs *fileScanner) Next() model.Entry {
+
+	if f, err := fs.files.Dequeue(); err == nil {
+		return f
+	}
+
+	dir, err := fs.dirs.Dequeue()
+	if err != nil {
+		return nil
+	}
+
+	if fs.ignore != "" && strings.HasPrefix(dir, fs.ignore) {
+		return fs.Next()
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+
+	for _, entry := range entries {
+
+		if entry.IsDir() {
+			fs.dirs.Enqueue(filepath.Join(dir, entry.Name()))
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return nil
+		}
+
+		path, err := filepath.Rel(fs.root, filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return nil
+		}
+
+		fs.files.Enqueue(&file{name: path, size: info.Size()})
+
+	}
+
+	return fs.Next()
 }

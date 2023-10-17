@@ -11,7 +11,7 @@ import (
 
 func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 
-	var repo database.Repository = database.NewFS(ctx.GotRoot())
+	var repo database.Repository = database.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer repo.Close()
 
 	err := repo.Index().OpenForRead()

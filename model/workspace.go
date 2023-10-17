@@ -2,14 +2,18 @@ package model
 
 import (
 	"io"
+	"sort"
 	"time"
 
 	"github.com/mizuho-u/got/model/object"
 )
 
 type workspace struct {
-	objects []object.Object
-	index   *index
+	objects   []object.Object
+	index     *index
+	scanner   WorkspaceScanner
+	changed   map[string]struct{}
+	untracked []string
 }
 
 type WorkspaceOption func(*workspace) error
@@ -24,6 +28,15 @@ func WithIndex(data io.Reader) WorkspaceOption {
 		}
 
 		w.index = index
+		return nil
+	}
+
+}
+
+func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
+
+	return func(w *workspace) error {
+		w.scanner = scanner
 		return nil
 	}
 
@@ -46,6 +59,10 @@ func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 
 	return ws, nil
 
+}
+
+func (w *workspace) Untracked() []string {
+	return w.untracked
 }
 
 func (w *workspace) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
@@ -91,6 +108,48 @@ func (w *workspace) Add(f *File) (object.Object, error) {
 	w.index.add(NewIndexEntry(f.Name, blob.OID(), f.Stat))
 
 	return blob, err
+}
+
+func (w *workspace) Scan() error {
+
+	untrackedSet := map[string]struct{}{}
+
+	for {
+
+		p := w.scanner.Next()
+		if p == nil {
+			break
+		}
+
+		if w.Index().Tracked(p.Name()) {
+			continue
+		}
+
+		entry := p.Name()
+		for _, d := range p.Parents() {
+
+			if !w.Index().Tracked(d) {
+				entry = d + "/"
+				break
+			}
+		}
+
+		untrackedSet[entry] = struct{}{}
+	}
+
+	untracked := make([]string, 0, len(untrackedSet))
+	for k := range untrackedSet {
+		untracked = append(untracked, k)
+	}
+
+	sort.SliceStable(untracked, func(i, j int) bool {
+		return untracked[i] < untracked[j]
+	})
+
+	w.untracked = untracked
+
+	return nil
+
 }
 
 func (w *workspace) Objects() []object.Object {

@@ -9,6 +9,7 @@ type Repository interface {
 	Refs() Refs
 	Objects() Objects
 	Index() Index
+	Scan() model.WorkspaceScanner
 	Close() error
 }
 

@@ -11,7 +11,7 @@ import (
 
 func Add(ctx GotContext, paths ...string) ExitCode {
 
-	var repo database.Repository = database.NewFS(ctx.GotRoot())
+	var repo database.Repository = database.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer repo.Close()
 
 	err := repo.Index().OpenForUpdate()
