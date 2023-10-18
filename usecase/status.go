@@ -12,7 +12,7 @@ func Status(ctx GotContext) ExitCode {
 	var repo database.Repository = database.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer repo.Close()
 
-	err := repo.Index().OpenForRead()
+	err := repo.Index().OpenForUpdate()
 	if err != nil {
 		return 128
 	}
@@ -33,8 +33,18 @@ func Status(ctx GotContext) ExitCode {
 		return 128
 	}
 
+	files, types := ws.Changed()
+	for _, f := range files {
+		ctx.Out(fmt.Sprintf("%s %s\n", types[f], f))
+	}
+
 	for _, v := range ws.Untracked() {
 		ctx.Out(fmt.Sprintf("?? %s\n", v))
+	}
+
+	if err := repo.Index().Update(ws.Index()); err != nil {
+		ctx.OutError(err)
+		return 128
 	}
 
 	return 0

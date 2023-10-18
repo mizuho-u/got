@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"testing"
 	"time"
@@ -112,6 +113,108 @@ func TestStatusUntrackedDirectories(t *testing.T) {
 				add(t, dir, fnames[f])
 				commit(t, dir, "commit message", time.Unix(1677142145, 0))
 
+			}
+
+			out := &bytes.Buffer{}
+			if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+				t.Error("expect exit code 0, got ", code)
+			}
+
+			if out.String() != tc.expect {
+				t.Errorf("expect \n%s, got \n%s", tc.expect, out)
+			}
+
+		})
+
+	}
+
+}
+
+func TestStatusChangedContents(t *testing.T) {
+
+	testt := []struct {
+		description string
+		newcontents map[string]string
+		newmode     map[string]fs.FileMode
+		newtimes    map[string]int64
+		delete      []string
+		expect      string
+	}{
+		{
+			description: "prints nothing when no files are changed",
+			newcontents: map[string]string{},
+			expect:      "",
+		},
+		{
+			description: "prints files with changed contents",
+			newcontents: map[string]string{"1.txt": "changed", "a/2.txt": "modified"},
+			expect:      " M 1.txt\n M a/2.txt\n",
+		},
+		{
+			description: "reports files with changed modes",
+			newmode:     map[string]fs.FileMode{"a/2.txt": 0755},
+			expect:      " M a/2.txt\n",
+		},
+		{
+			description: "reports modified files with unchanged size",
+			newcontents: map[string]string{"a/b/3.txt": "hello"},
+			expect:      " M a/b/3.txt\n",
+		},
+		{
+			description: "reports modified files with unchanged size",
+			newcontents: map[string]string{"a/b/3.txt": "hello"},
+			expect:      " M a/b/3.txt\n",
+		},
+		{
+			description: "prints nothing if a file is touched",
+			newtimes:    map[string]int64{"a/b/3.txt": 1},
+			expect:      "",
+		},
+		{
+			description: "reports deleted files",
+			delete:      []string{"a/2.txt"},
+			expect:      " D a/2.txt\n",
+		},
+		{
+			description: "reports files in deleted directories",
+			delete:      []string{"a"},
+			expect:      " D a/2.txt\n D a/b/3.txt\n",
+		},
+	}
+
+	for _, tc := range testt {
+
+		t.Run(tc.description, func(t *testing.T) {
+
+			now := time.Now()
+
+			dir := initDir(t)
+
+			f1 := createFile(t, dir, "1.txt", []byte("one"))
+			modifyFileTime(t, dir, "1.txt", now, now)
+
+			f2 := createFile(t, dir, "a/2.txt", []byte("two"))
+			modifyFileTime(t, dir, "a/2.txt", now, now)
+
+			f3 := createFile(t, dir, "a/b/3.txt", []byte("three"))
+			modifyFileTime(t, dir, "a/b/3.txt", now, now)
+
+			add(t, dir, f1)
+			add(t, dir, f2)
+			add(t, dir, f3)
+
+			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+
+			for file, contents := range tc.newcontents {
+				createFile(t, dir, file, []byte(contents))
+			}
+
+			for file, mode := range tc.newmode {
+				modifyFileMode(t, dir, file, mode)
+			}
+
+			for _, name := range tc.delete {
+				removeAll(t, dir, name)
 			}
 
 			out := &bytes.Buffer{}

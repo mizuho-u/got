@@ -18,7 +18,8 @@ const (
 
 type Index interface {
 	Serialize() ([]byte, error)
-	Tracked(name string) bool
+	tracked(name string) bool
+	match(e Entry) bool
 }
 
 type index struct {
@@ -241,12 +242,51 @@ func (i *index) Serialize() ([]byte, error) {
 	return content, nil
 }
 
-func (i *index) Tracked(name string) bool {
+func (i *index) tracked(name string) bool {
 
 	_, inEntries := i.entries[name]
 	_, inParents := i.parents[name]
 
 	return inEntries || inParents
+}
+
+func (i *index) match(e Entry) bool {
+
+	entry, inEntries := i.entries[e.Name()]
+	if !inEntries {
+		return false
+	}
+
+	if entry.stat.size != uint32(e.Size()) {
+		return false
+	}
+
+	if entry.stat.mode != e.Stats().mode {
+		return false
+	}
+
+	if entry.matchTimes(e.Stats()) {
+		return true
+	}
+
+	data, err := io.ReadAll(e)
+	if err != nil {
+		return false
+	}
+
+	blod, err := object.NewBlob(e.Name(), data)
+	if err != nil {
+		return false
+	}
+
+	if entry.oid != blod.OID() {
+		return false
+	}
+
+	entry.stat = e.Stats()
+
+	return true
+
 }
 
 type indexEntry struct {
@@ -354,4 +394,13 @@ func (ie *indexEntry) permission() object.Permission {
 	}
 
 	return object.RegularFile
+}
+
+func (ie *indexEntry) matchTimes(stat *FileStat) bool {
+
+	return ie.stat.ctime == stat.ctime &&
+		ie.stat.ctime_nsec == stat.ctime_nsec &&
+		ie.stat.mtime == stat.mtime &&
+		ie.stat.mtime_nsec == stat.mtime_nsec
+
 }

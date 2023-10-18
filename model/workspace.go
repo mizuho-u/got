@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/mizuho-u/got/internal"
 	"github.com/mizuho-u/got/model/object"
 )
 
@@ -12,8 +13,9 @@ type workspace struct {
 	objects   []object.Object
 	index     *index
 	scanner   WorkspaceScanner
-	changed   map[string]struct{}
+	changed   map[string]string
 	untracked []string
+	stats     map[string]Entry
 }
 
 type WorkspaceOption func(*workspace) error
@@ -49,7 +51,7 @@ func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 		return nil, err
 	}
 
-	ws := &workspace{objects: []object.Object{}, index: index}
+	ws := &workspace{objects: []object.Object{}, index: index, changed: map[string]string{}, untracked: []string{}, stats: map[string]Entry{}}
 
 	for _, opt := range options {
 		if err := opt(ws); err != nil {
@@ -63,6 +65,17 @@ func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 
 func (w *workspace) Untracked() []string {
 	return w.untracked
+}
+
+func (w *workspace) Changed() ([]string, map[string]string) {
+
+	files := internal.Keys(w.changed)
+
+	sort.SliceStable(files, func(i, j int) bool {
+		return files[i] < files[j]
+	})
+
+	return files, w.changed
 }
 
 func (w *workspace) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
@@ -112,6 +125,18 @@ func (w *workspace) Add(f *File) (object.Object, error) {
 
 func (w *workspace) Scan() error {
 
+	if err := w.scan(); err != nil {
+		return err
+	}
+
+	w.detectChanges()
+
+	return nil
+
+}
+
+func (w *workspace) scan() error {
+
 	untrackedSet := map[string]struct{}{}
 
 	for {
@@ -121,14 +146,16 @@ func (w *workspace) Scan() error {
 			break
 		}
 
-		if w.Index().Tracked(p.Name()) {
+		w.stats[p.Name()] = p
+
+		if w.Index().tracked(p.Name()) {
 			continue
 		}
 
 		entry := p.Name()
 		for _, d := range p.Parents() {
 
-			if !w.Index().Tracked(d) {
+			if !w.Index().tracked(d) {
 				entry = d + "/"
 				break
 			}
@@ -137,18 +164,36 @@ func (w *workspace) Scan() error {
 		untrackedSet[entry] = struct{}{}
 	}
 
-	untracked := make([]string, 0, len(untrackedSet))
 	for k := range untrackedSet {
-		untracked = append(untracked, k)
+		w.untracked = append(w.untracked, k)
 	}
-
-	sort.SliceStable(untracked, func(i, j int) bool {
-		return untracked[i] < untracked[j]
+	sort.SliceStable(w.untracked, func(i, j int) bool {
+		return w.untracked[i] < w.untracked[j]
 	})
 
-	w.untracked = untracked
-
 	return nil
+}
+
+const (
+	fileDeleted  string = " D"
+	fileModified string = " M"
+)
+
+func (w *workspace) detectChanges() {
+
+	for _, e := range w.index.entries {
+
+		stat, ok := w.stats[e.filename]
+		if !ok {
+			w.changed[e.filename] = fileDeleted
+			continue
+		}
+
+		if !w.index.match(stat) {
+			w.changed[e.filename] = fileModified
+		}
+
+	}
 
 }
 

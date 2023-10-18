@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/mizuho-u/got/usecase"
 )
@@ -89,6 +91,36 @@ func createDir(t testing.TB, dir, name string) {
 	t.Helper()
 
 	if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func modifyFileMode(t testing.TB, dir, name string, mode fs.FileMode) {
+
+	t.Helper()
+
+	if err := os.Chmod(filepath.Join(dir, name), mode); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func modifyFileTime(t testing.TB, dir, name string, atime, mtime time.Time) {
+
+	t.Helper()
+
+	if err := os.Chtimes(filepath.Join(dir, name), atime, mtime); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func removeAll(t testing.TB, dir, name string) {
+
+	t.Helper()
+
+	if err := os.RemoveAll(filepath.Join(dir, name)); err != nil {
 		t.Fatal(err)
 	}
 

@@ -1,9 +1,11 @@
 package database
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/mizuho-u/got/internal"
 	"github.com/mizuho-u/got/model"
@@ -42,8 +44,10 @@ func (fs *FS) Scan() model.WorkspaceScanner {
 }
 
 type file struct {
-	name string
-	size int64
+	name  string
+	size  int64
+	stats *model.FileStat
+	io.Reader
 }
 
 func (f *file) Name() string {
@@ -69,6 +73,10 @@ func (f *file) Parents() []string {
 
 	return parentsDirs
 
+}
+
+func (f *file) Stats() *model.FileStat {
+	return f.stats
 }
 
 type fileScanner struct {
@@ -114,13 +122,22 @@ func (fs *fileScanner) Next() model.Entry {
 			return nil
 		}
 
+		statt, ok := info.Sys().(*syscall.Stat_t)
+		if !ok {
+			return nil
+		}
+
 		path, err := filepath.Rel(fs.root, filepath.Join(dir, entry.Name()))
 		if err != nil {
 			return nil
 		}
 
-		fs.files.Enqueue(&file{name: path, size: info.Size()})
+		reader, err := os.Open(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return nil
+		}
 
+		fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), Reader: reader})
 	}
 
 	return fs.Next()
