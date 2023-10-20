@@ -9,7 +9,7 @@ type Repository interface {
 	Refs() Refs
 	Objects() Objects
 	Index() Index
-	Scan() model.WorkspaceScanner
+	Scan(name string) (model.WorkspaceScanner, error)
 	Close() error
 }
 
@@ -19,7 +19,7 @@ type Refs interface {
 }
 
 type Objects interface {
-	Store(o object.Object) error
+	Store(objects ...object.Object) error
 }
 
 type Index interface {

@@ -1,7 +1,9 @@
 package database
 
 import (
+	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,8 +41,8 @@ func (fs *FS) Close() error {
 	return fs.index.Close()
 }
 
-func (fs *FS) Scan() model.WorkspaceScanner {
-	return newFileScanner(fs.wsroot, fs.gotroot)
+func (fs *FS) Scan(name string) (model.WorkspaceScanner, error) {
+	return newFileScanner(fs.wsroot, name, fs.gotroot)
 }
 
 type file struct {
@@ -86,19 +88,33 @@ type fileScanner struct {
 	dirs   internal.Queue[string] // fullpath
 }
 
-func newFileScanner(dir, ignore string) *fileScanner {
-	return &fileScanner{root: dir, ignore: ignore, files: internal.Queue[*file]{}, dirs: internal.Queue[string]{dir}}
+func newFileScanner(root, name, ignore string) (*fileScanner, error) {
+
+	scanner := &fileScanner{root: root, ignore: ignore, files: internal.Queue[*file]{}, dirs: internal.Queue[string]{}}
+
+	info, err := os.Stat(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if info.IsDir() {
+		scanner.dirs = append(scanner.dirs, name)
+	} else if err := scanner.enqueueFile(filepath.Dir(name), info); err != nil {
+		return nil, err
+	}
+
+	return scanner, nil
 }
 
-func (fs *fileScanner) Next() model.Entry {
+func (fs *fileScanner) Next() (model.Entry, error) {
 
 	if f, err := fs.files.Dequeue(); err == nil {
-		return f
+		return f, nil
 	}
 
 	dir, err := fs.dirs.Dequeue()
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 
 	if fs.ignore != "" && strings.HasPrefix(dir, fs.ignore) {
@@ -107,7 +123,7 @@ func (fs *fileScanner) Next() model.Entry {
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	for _, entry := range entries {
@@ -119,26 +135,33 @@ func (fs *fileScanner) Next() model.Entry {
 
 		info, err := entry.Info()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 
-		statt, ok := info.Sys().(*syscall.Stat_t)
-		if !ok {
-			return nil
-		}
-
-		path, err := filepath.Rel(fs.root, filepath.Join(dir, entry.Name()))
-		if err != nil {
-			return nil
-		}
-
-		reader, err := os.Open(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			return nil
-		}
-
-		fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), Reader: reader})
+		fs.enqueueFile(dir, info)
 	}
 
 	return fs.Next()
+}
+
+func (fs *fileScanner) enqueueFile(dir string, info fs.FileInfo) error {
+
+	path, err := filepath.Rel(fs.root, filepath.Join(dir, info.Name()))
+	if err != nil {
+		return err
+	}
+
+	statt, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return errors.New("failed to get statt")
+	}
+
+	reader, err := os.Open(filepath.Join(dir, info.Name()))
+	if err != nil {
+		return err
+	}
+
+	fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), Reader: reader})
+
+	return nil
 }

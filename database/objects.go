@@ -18,19 +18,28 @@ func NewObjects(gotpath string) *objects {
 	return &objects{gotpath: gotpath}
 }
 
-func (s *objects) Store(o object.Object) error {
+func (s *objects) Store(objects ...object.Object) error {
 
-	path := filepath.Join(s.gotpath, "objects", o.OID()[0:2], o.OID()[2:])
-	if s.isExist(path) {
-		return nil
+	for _, o := range objects {
+
+		path := filepath.Join(s.gotpath, "objects", o.OID()[0:2], o.OID()[2:])
+		if s.isExist(path) {
+			continue
+		}
+
+		compressed, err := s.compress(o.Content())
+		if err != nil {
+			return err
+		}
+
+		if err := s.create(path, compressed); err != nil {
+			return err
+		}
+
 	}
 
-	compressed, err := s.compress(o.Content())
-	if err != nil {
-		return err
-	}
+	return nil
 
-	return s.create(path, compressed)
 }
 
 func (s *objects) isExist(path string) bool {

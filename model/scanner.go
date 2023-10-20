@@ -3,7 +3,7 @@ package model
 import "io"
 
 type WorkspaceScanner interface {
-	Next() Entry
+	Next() (Entry, error)
 }
 
 type Entry interface {

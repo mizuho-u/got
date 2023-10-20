@@ -21,7 +21,12 @@ func Status(ctx GotContext) ExitCode {
 	if !repo.Index().IsNew() {
 		opt = append(opt, model.WithIndex(repo.Index()))
 	}
-	opt = append(opt, model.WithWorkspaceScanner(repo.Scan()))
+	scanner, err := repo.Scan(ctx.WorkspaceRoot())
+	if err != nil {
+		ctx.OutError(err)
+		return 128
+	}
+	opt = append(opt, model.WithWorkspaceScanner(scanner))
 
 	ws, err := model.NewWorkspace(opt...)
 	if err != nil {

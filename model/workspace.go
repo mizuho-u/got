@@ -64,6 +64,12 @@ func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 }
 
 func (w *workspace) Untracked() []string {
+
+	// 呼び出しのたびにソートするのは無駄かも
+	sort.SliceStable(w.untracked, func(i, j int) bool {
+		return w.untracked[i] < w.untracked[j]
+	})
+
 	return w.untracked
 }
 
@@ -110,17 +116,35 @@ func (w *workspace) Commit(parent, author, email, message string, now time.Time)
 
 }
 
-func (w *workspace) Add(f *File) (object.Object, error) {
+func (w *workspace) Add(scanner WorkspaceScanner) ([]object.Object, error) {
 
-	blob, err := object.NewBlob(f.Name, f.Data)
-	if err != nil {
-		return nil, err
+	objects := []object.Object{}
+
+	for {
+
+		f, err := scanner.Next()
+		if err != nil {
+			return nil, err
+		}
+		if f == nil {
+			return objects, nil
+		}
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+
+		blob, err := object.NewBlob(f.Name(), data)
+		if err != nil {
+			return nil, err
+		}
+		w.objects = append(w.objects, blob)
+
+		w.index.add(NewIndexEntry(f.Name(), blob.OID(), f.Stats()))
+
 	}
-	w.objects = append(w.objects, blob)
 
-	w.index.add(NewIndexEntry(f.Name, blob.OID(), f.Stat))
-
-	return blob, err
 }
 
 func (w *workspace) Scan() error {
@@ -141,7 +165,11 @@ func (w *workspace) scan() error {
 
 	for {
 
-		p := w.scanner.Next()
+		p, err := w.scanner.Next()
+		if err != nil {
+			return err
+		}
+
 		if p == nil {
 			break
 		}
@@ -167,9 +195,6 @@ func (w *workspace) scan() error {
 	for k := range untrackedSet {
 		w.untracked = append(w.untracked, k)
 	}
-	sort.SliceStable(w.untracked, func(i, j int) bool {
-		return w.untracked[i] < w.untracked[j]
-	})
 
 	return nil
 }
