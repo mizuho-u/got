@@ -20,6 +20,7 @@ type Refs interface {
 
 type Objects interface {
 	Store(objects ...object.Object) error
+	Load(oid string) (object.Object, error)
 }
 
 type Index interface {

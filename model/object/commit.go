@@ -1,10 +1,16 @@
 package object
 
-type commit struct {
+import (
+	"bytes"
+	"strings"
+)
+
+type Commit struct {
+	parent, tree, author, message string
 	*object
 }
 
-func NewCommit(parent, tree, author, message string) (*commit, error) {
+func NewCommit(parent, tree, author, message string) (*Commit, error) {
 
 	content := []byte{}
 
@@ -17,10 +23,60 @@ func NewCommit(parent, tree, author, message string) (*commit, error) {
 	content = append(content, []byte("\n")...)
 	content = append(content, []byte(message)...)
 
-	object, err := newObject(content, classCommit)
+	object, err := newObject(content, ClassCommit)
 	if err != nil {
 		return nil, err
 	}
 
-	return &commit{object: object}, nil
+	return &Commit{parent, tree, author, message, object}, nil
+}
+
+func ParseCommit(object Object) (*Commit, error) {
+
+	commit := &Commit{}
+
+	buf := bytes.NewBuffer(object.Content())
+
+	str, err := buf.ReadString(0x0A)
+	if err != nil {
+		return nil, err
+	}
+	commit.tree = strings.TrimSuffix(strings.TrimPrefix(str, "tree "), "\n")
+
+	str, err = buf.ReadString(0x0A)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.HasPrefix(str, "parent") {
+
+		commit.parent = strings.TrimRight(strings.TrimLeft(str, "parent "), "\n")
+
+		str, err = buf.ReadString(0x0A)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	commit.author = strings.TrimRight(strings.TrimLeft(str, "author "), "\n")
+
+	str, err = buf.ReadString(0x0A)
+	if err != nil {
+		return nil, err
+	}
+	commit.author = strings.TrimSuffix(strings.TrimPrefix(str, "committer "), "\n")
+
+	_, err = buf.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+
+	commit.message = buf.String()
+
+	return commit, nil
+
+}
+
+func (c *Commit) Tree() string {
+	return c.tree
 }

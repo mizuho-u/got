@@ -3,6 +3,8 @@ package database
 import (
 	"bytes"
 	"compress/zlib"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -40,6 +42,26 @@ func (s *objects) Store(objects ...object.Object) error {
 
 	return nil
 
+}
+
+func (s *objects) Load(oid string) (object.Object, error) {
+
+	path := filepath.Join(s.gotpath, "objects", oid[0:2], oid[2:])
+	if !s.isExist(path) {
+		return nil, fmt.Errorf("%s not found", oid)
+	}
+
+	compressed, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := s.decompress(compressed)
+	if err != nil {
+		return nil, err
+	}
+
+	return object.ParseObject(data)
 }
 
 func (s *objects) isExist(path string) bool {
@@ -90,6 +112,18 @@ func (s *objects) compress(data []byte) ([]byte, error) {
 	}
 
 	return b.Bytes(), nil
+}
+
+func (s *objects) decompress(data []byte) ([]byte, error) {
+
+	b := bytes.NewBuffer(data)
+
+	zw, err := zlib.NewReader(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return io.ReadAll(zw)
 }
 
 func (s *objects) StoreAll(objects ...object.Object) error {
