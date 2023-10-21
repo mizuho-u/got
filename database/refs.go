@@ -30,9 +30,9 @@ func (r *refs) HEAD() (string, error) {
 	// テスト時にgitコマンドがレポジトリを認識するようgot initで仮のHEADファイルを生成しているが、
 	// refの実装はまだ追いついていないので実装するまで空で返す
 	head := string(read)
-	if head == "ref: refs/heads/main" {
-		head = ""
-	}
+	// if head == "ref: refs/heads/main" {
+	// 	head = ""
+	// }
 
 	return head, nil
 }
