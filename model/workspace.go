@@ -109,8 +109,9 @@ func (w *workspace) Commit(parent, author, email, message string, now time.Time)
 	if err != nil {
 		return commitId, err
 	}
-	commitId = commit.OID()
 	w.objects = append(w.objects, commit)
+
+	commitId = commit.OID()
 
 	return commitId, err
 

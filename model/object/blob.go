@@ -17,10 +17,14 @@ type Blob interface {
 
 func NewBlob(filename string, data []byte) (Blob, error) {
 
-	object, err := newObject(data, classBlob)
+	object, err := newObject(data, ClassBlob)
 	if err != nil {
 		return nil, err
 	}
 
 	return &blob{object, data, filename}, nil
+}
+
+func ParseBlob(filename string, object *object) *blob {
+	return &blob{object, object.content, filename}
 }

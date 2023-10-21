@@ -34,6 +34,10 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
+	if err := repo.Objects().Store(ws.Objects()...); err != nil {
+		return 128
+	}
+
 	if err := repo.Refs().UpdateHEAD(commitId); err != nil {
 		return 128
 	}

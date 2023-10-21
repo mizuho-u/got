@@ -1,9 +1,11 @@
 package object
 
 import (
+	"bytes"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/mizuho-u/got/model/internal"
 )
@@ -26,7 +28,7 @@ func (te *treeEntry) OID() string {
 	return te.oid
 }
 
-func (te *treeEntry) basename() string {
+func (te *treeEntry) Basename() string {
 	return filepath.Base(te.filepath)
 }
 
@@ -34,7 +36,7 @@ func (te *treeEntry) fullpath() string {
 	return te.filepath
 }
 
-func (te *treeEntry) permission() Permission {
+func (te *treeEntry) Permission() Permission {
 	return te.perm
 }
 
@@ -42,11 +44,16 @@ func (te *treeEntry) build() error {
 	return nil
 }
 
+func (te *treeEntry) IsTree() bool {
+	return false
+}
+
 type Entry interface {
 	OID() string
-	basename() string
+	IsTree() bool
+	Basename() string
 	fullpath() string
-	permission() Permission
+	Permission() Permission
 	build() error
 }
 
@@ -80,10 +87,44 @@ func BuildTree(entries []Entry) (*tree, error) {
 	return root, nil
 }
 
+func ParseTree(o Object) (*tree, error) {
+
+	root := &tree{children: []Entry{}}
+
+	buf := bytes.NewBuffer(o.Content())
+
+	for buf.Len() > 0 {
+
+		perm, err := buf.ReadString(0x20)
+		if err != nil {
+			return nil, err
+		}
+		perm = strings.TrimSpace(perm)
+
+		bytes, err := buf.ReadBytes(0x00)
+		if err != nil {
+			return nil, err
+		}
+		filepath := string(bytes[0 : len(bytes)-1])
+
+		oid := internal.Unpack(buf.Next(20))
+
+		if p := Permission(perm); p == Directory {
+			root.children = append(root.children, &tree{children: []Entry{}, base: filepath, object: &object{id: oid}})
+		} else {
+			root.children = append(root.children, &treeEntry{perm: p, filepath: filepath, oid: oid})
+		}
+
+	}
+
+	return root, nil
+
+}
+
 func (t *tree) add(parents []string, e Entry) {
 
 	if len(parents) == 0 {
-		t.index[e.basename()] = len(t.children)
+		t.index[e.Basename()] = len(t.children)
 		t.children = append(t.children, e)
 
 	} else {
@@ -138,11 +179,11 @@ func (t *tree) build() error {
 
 		e := []byte{}
 		// the filemode
-		e = append(e, []byte(entry.permission())...)
+		e = append(e, []byte(entry.Permission())...)
 		// a space
 		e = append(e, 0x20)
 		// the filename
-		e = append(e, []byte(entry.basename())...)
+		e = append(e, []byte(entry.Basename())...)
 		// a null byte
 		e = append(e, 0x00)
 		// the oid packed into twenty bytes
@@ -152,7 +193,7 @@ func (t *tree) build() error {
 
 	}
 
-	object, err := newObject(content, classTree)
+	object, err := newObject(content, ClassTree)
 	if err != nil {
 		return err
 	}
@@ -174,7 +215,7 @@ func (t *tree) Walk(f func(tree Object) error) error {
 	return f(t)
 }
 
-func (t *tree) basename() string {
+func (t *tree) Basename() string {
 	return t.base
 }
 
@@ -182,12 +223,20 @@ func (t *tree) fullpath() string {
 	return t.full
 }
 
-func (t *tree) permission() Permission {
+func (t *tree) Permission() Permission {
 	return Directory
 }
 
 func (t *tree) OID() string {
 	return t.id
+}
+
+func (t *tree) IsTree() bool {
+	return true
+}
+
+func (t *tree) Children() []Entry {
+	return t.children
 }
 
 func pack(oid string) ([]byte, error) {
