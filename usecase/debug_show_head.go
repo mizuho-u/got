@@ -4,13 +4,12 @@ import (
 	"fmt"
 
 	"github.com/mizuho-u/got/io/database"
-	"github.com/mizuho-u/got/io/database/fs"
 	"github.com/mizuho-u/got/model/object"
 )
 
 func ShowHead(ctx GotContext, paths ...string) ExitCode {
 
-	var db database.Database = fs.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
+	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	head, err := db.Refs().HEAD()

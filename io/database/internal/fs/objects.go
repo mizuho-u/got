@@ -13,15 +13,15 @@ import (
 	"github.com/mizuho-u/got/model/object"
 )
 
-type objects struct {
+type Objects struct {
 	gotpath string
 }
 
-func newObjects(gotpath string) *objects {
-	return &objects{gotpath: gotpath}
+func NewObjects(gotpath string) *Objects {
+	return &Objects{gotpath: gotpath}
 }
 
-func (s *objects) Store(objects ...object.Object) error {
+func (s *Objects) Store(objects ...object.Object) error {
 
 	for _, o := range objects {
 
@@ -45,7 +45,7 @@ func (s *objects) Store(objects ...object.Object) error {
 
 }
 
-func (s *objects) Load(oid string) (object.Object, error) {
+func (s *Objects) Load(oid string) (object.Object, error) {
 
 	path := filepath.Join(s.gotpath, "objects", oid[0:2], oid[2:])
 	if !s.isExist(path) {
@@ -65,7 +65,7 @@ func (s *objects) Load(oid string) (object.Object, error) {
 	return object.ParseObject(data)
 }
 
-func (s *objects) isExist(path string) bool {
+func (s *Objects) isExist(path string) bool {
 
 	// the path exists if err is nil
 	if _, err := os.Stat(path); err == nil {
@@ -76,7 +76,7 @@ func (s *objects) isExist(path string) bool {
 
 }
 
-func (s *objects) create(path string, data []byte) error {
+func (s *Objects) create(path string, data []byte) error {
 
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
@@ -94,7 +94,7 @@ func (s *objects) create(path string, data []byte) error {
 	return os.Rename(temp.Name(), path)
 }
 
-func (s *objects) compress(data []byte) ([]byte, error) {
+func (s *Objects) compress(data []byte) ([]byte, error) {
 
 	var b bytes.Buffer
 
@@ -115,7 +115,7 @@ func (s *objects) compress(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (s *objects) decompress(data []byte) ([]byte, error) {
+func (s *Objects) decompress(data []byte) ([]byte, error) {
 
 	b := bytes.NewBuffer(data)
 
@@ -127,7 +127,7 @@ func (s *objects) decompress(data []byte) ([]byte, error) {
 	return io.ReadAll(zw)
 }
 
-func (s *objects) StoreAll(objects ...object.Object) error {
+func (s *Objects) StoreAll(objects ...object.Object) error {
 
 	for _, o := range objects {
 		if err := s.Store(o); err != nil {
@@ -139,7 +139,7 @@ func (s *objects) StoreAll(objects ...object.Object) error {
 
 }
 
-func (s *objects) ScanTree(oid string) model.TreeScanner {
+func (s *Objects) ScanTree(oid string) model.TreeScanner {
 	return newTreeScanner(s.gotpath, oid)
 }
 

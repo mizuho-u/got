@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mizuho-u/got/io/database"
-	"github.com/mizuho-u/got/io/database/fs"
 	"github.com/mizuho-u/got/io/workspace"
 	"github.com/mizuho-u/got/model"
 	"github.com/mizuho-u/got/model/object"
@@ -12,7 +11,7 @@ import (
 
 func Status(ctx GotContext) ExitCode {
 
-	var db database.Database = fs.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
+	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	err := db.Index().OpenForUpdate()
@@ -24,7 +23,7 @@ func Status(ctx GotContext) ExitCode {
 	if !db.Index().IsNew() {
 		opt = append(opt, model.WithIndex(db.Index()))
 	}
-	scanner, err := workspace.NewFileScanner(ctx.WorkspaceRoot(), ctx.WorkspaceRoot(), ctx.GotRoot())
+	scanner, err := workspace.Scan(ctx.WorkspaceRoot(), ctx.WorkspaceRoot(), ctx.GotRoot())
 	if err != nil {
 		ctx.OutError(err)
 		return 128

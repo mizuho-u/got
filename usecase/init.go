@@ -1,25 +1,16 @@
 package usecase
 
 import (
-	"os"
-	"path/filepath"
-
-	"github.com/mizuho-u/got/io/database/fs"
+	"github.com/mizuho-u/got/io/database"
 )
 
 type ExitCode int
 
 func InitDir(ctx GotContext) ExitCode {
 
-	if err := os.MkdirAll(filepath.Join(ctx.GotRoot(), "objects"), os.ModeDir|0755); err != nil {
-		return 128
-	}
+	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 
-	if err := os.MkdirAll(filepath.Join(ctx.GotRoot(), "refs"), os.ModeDir|0755); err != nil {
-		return 128
-	}
-
-	if err := fs.NewRefs(ctx.GotRoot()).UpdateHEAD("ref: refs/heads/main"); err != nil {
+	if err := db.Init(); err != nil {
 		return 128
 	}
 

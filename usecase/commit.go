@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/mizuho-u/got/io/database"
-	"github.com/mizuho-u/got/io/database/fs"
 	"github.com/mizuho-u/got/model"
 )
 
 func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 
-	var db database.Database = fs.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
+	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	err := db.Index().OpenForRead()

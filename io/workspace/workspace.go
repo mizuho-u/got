@@ -20,9 +20,10 @@ type fileScanner struct {
 	dirs   internal.Queue[string] // fullpath
 }
 
-func NewFileScanner(root, name, ignore string) (*fileScanner, error) {
+// Scan nameをスキャンしてrootDirからの相対パスを取得するfileScannerを生成する
+func Scan(rootDir, name, ignore string) (*fileScanner, error) {
 
-	scanner := &fileScanner{root: root, ignore: ignore, files: internal.Queue[*file]{}, dirs: internal.Queue[string]{}}
+	scanner := &fileScanner{root: rootDir, ignore: ignore, files: internal.Queue[*file]{}, dirs: internal.Queue[string]{}}
 
 	info, err := os.Stat(name)
 	if err != nil {
@@ -38,6 +39,7 @@ func NewFileScanner(root, name, ignore string) (*fileScanner, error) {
 	return scanner, nil
 }
 
+// Next エントリをひとつ返す。最後はnil
 func (fs *fileScanner) Next() (model.Entry, error) {
 
 	if f, err := fs.files.Dequeue(); err == nil {

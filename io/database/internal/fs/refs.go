@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 )
 
-type refs struct {
+type Refs struct {
 	gotpath string
 }
 
-func NewRefs(gotpath string) *refs {
-	return &refs{gotpath}
+func NewRefs(gotpath string) *Refs {
+	return &Refs{gotpath}
 }
 
-func (r *refs) HEAD() (string, error) {
+func (r *Refs) HEAD() (string, error) {
 
 	f, err := os.Open(filepath.Join(r.gotpath, "HEAD"))
 	if err == os.ErrNotExist {
@@ -37,7 +37,7 @@ func (r *refs) HEAD() (string, error) {
 	return head, nil
 }
 
-func (r *refs) UpdateHEAD(commitId string) error {
+func (r *Refs) UpdateHEAD(commitId string) error {
 
 	head, err := NewLockfile(filepath.Join(r.gotpath, "HEAD"))
 	if err != nil {

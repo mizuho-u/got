@@ -1,12 +1,10 @@
-package fs_test
+package fs
 
 import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/mizuho-u/got/io/database/fs"
 )
 
 func TestLockfile(t *testing.T) {
@@ -19,7 +17,7 @@ func TestLockfile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// act
-	lockfile, err := fs.NewLockfile(filepath.Join(dir, "hello.txt"))
+	lockfile, err := NewLockfile(filepath.Join(dir, "hello.txt"))
 	if err != nil {
 		t.Fatal("failed to create lockfile. ", err)
 	}
@@ -55,13 +53,13 @@ func TestFileAlreadyLocked(t *testing.T) {
 
 	// act
 	// assert
-	lockfile, err := fs.NewLockfile(filepath.Join(dir, "hello.txt"))
+	lockfile, err := NewLockfile(filepath.Join(dir, "hello.txt"))
 	if err != nil {
 		t.Fatal("failed to create lockfile. ", err)
 	}
 	defer lockfile.Commit()
 
-	_, err = fs.NewLockfile(filepath.Join(dir, "hello.txt"))
+	_, err = NewLockfile(filepath.Join(dir, "hello.txt"))
 	if err == nil {
 		t.Fatal("expected to not get lockfile, but got. ")
 	}

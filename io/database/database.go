@@ -6,24 +6,25 @@ import (
 )
 
 type Database interface {
-	Refs() Refs
-	Objects() Objects
-	Index() Index
+	Init() error
+	Refs() refs
+	Objects() objects
+	Index() index
 	Close() error
 }
 
-type Refs interface {
+type refs interface {
 	HEAD() (string, error)
 	UpdateHEAD(commitId string) error
 }
 
-type Objects interface {
+type objects interface {
 	Store(objects ...object.Object) error
 	Load(oid string) (object.Object, error)
 	ScanTree(oid string) model.TreeScanner
 }
 
-type Index interface {
+type index interface {
 	OpenForUpdate() error
 	OpenForRead() error
 	Update(index model.Index) error

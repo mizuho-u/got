@@ -9,17 +9,17 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-type index struct {
+type Index struct {
 	path     string
 	file     *os.File
 	lockfile *lockfile
 }
 
-func newIndex(gotpath string) *index {
-	return &index{path: filepath.Join(gotpath, "index")}
+func NewIndex(gotpath string) *Index {
+	return &Index{path: filepath.Join(gotpath, "index")}
 }
 
-func (i *index) OpenForUpdate() error {
+func (i *Index) OpenForUpdate() error {
 
 	if err := i.lock(); err != nil {
 		return err
@@ -37,7 +37,7 @@ func (i *index) OpenForUpdate() error {
 	}
 }
 
-func (i *index) OpenForRead() error {
+func (i *Index) OpenForRead() error {
 
 	f, err := os.Open(i.path)
 	switch {
@@ -51,7 +51,7 @@ func (i *index) OpenForRead() error {
 	}
 }
 
-func (i *index) Update(index model.Index) error {
+func (i *Index) Update(index model.Index) error {
 
 	content, err := index.Serialize()
 	if err != nil {
@@ -68,7 +68,7 @@ func (i *index) Update(index model.Index) error {
 	return i.lockfile.Commit()
 }
 
-func (i *index) Read(p []byte) (n int, err error) {
+func (i *Index) Read(p []byte) (n int, err error) {
 
 	if i.file == nil {
 		return 0, nil
@@ -77,7 +77,7 @@ func (i *index) Read(p []byte) (n int, err error) {
 	return i.file.Read(p)
 }
 
-func (i *index) lock() error {
+func (i *Index) lock() error {
 
 	if i.lockfile != nil {
 		return nil
@@ -93,7 +93,7 @@ func (i *index) lock() error {
 	return nil
 }
 
-func (i *index) Close() error {
+func (i *Index) Close() error {
 
 	if i.lockfile == nil {
 		return nil
@@ -102,6 +102,6 @@ func (i *index) Close() error {
 	return i.lockfile.Release()
 }
 
-func (i *index) IsNew() bool {
+func (i *Index) IsNew() bool {
 	return i.file == nil
 }
