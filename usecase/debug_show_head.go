@@ -3,21 +3,22 @@ package usecase
 import (
 	"fmt"
 
-	"github.com/mizuho-u/got/database"
+	"github.com/mizuho-u/got/io/database"
+	"github.com/mizuho-u/got/io/database/fs"
 	"github.com/mizuho-u/got/model/object"
 )
 
 func ShowHead(ctx GotContext, paths ...string) ExitCode {
 
-	var repo database.Repository = database.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
-	defer repo.Close()
+	var db database.Database = fs.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
+	defer db.Close()
 
-	head, err := repo.Refs().HEAD()
+	head, err := db.Refs().HEAD()
 	if err != nil {
 		return 128
 	}
 
-	o, err := repo.Objects().Load(head)
+	o, err := db.Objects().Load(head)
 	if err != nil {
 		return 128
 	}
@@ -27,7 +28,7 @@ func ShowHead(ctx GotContext, paths ...string) ExitCode {
 		return 128
 	}
 
-	repo.Objects().ScanTree(commit.Tree()).Walk(func(name string, entry object.Entry) {
+	db.Objects().ScanTree(commit.Tree()).Walk(func(name string, entry object.Entry) {
 		if entry.IsTree() {
 			return
 		}

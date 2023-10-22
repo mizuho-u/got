@@ -1,23 +1,25 @@
 package usecase
 
 import (
-	"github.com/mizuho-u/got/database"
+	"github.com/mizuho-u/got/io/database"
+	"github.com/mizuho-u/got/io/database/fs"
+	"github.com/mizuho-u/got/io/workspace"
 	"github.com/mizuho-u/got/model"
 )
 
 func Add(ctx GotContext, paths ...string) ExitCode {
 
-	var repo database.Repository = database.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
-	defer repo.Close()
+	var db database.Database = fs.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
+	defer db.Close()
 
-	err := repo.Index().OpenForUpdate()
+	err := db.Index().OpenForUpdate()
 	if err != nil {
 		return 128
 	}
 
 	opt := []model.WorkspaceOption{}
-	if !repo.Index().IsNew() {
-		opt = append(opt, model.WithIndex(repo.Index()))
+	if !db.Index().IsNew() {
+		opt = append(opt, model.WithIndex(db.Index()))
 	}
 	ws, err := model.NewWorkspace(opt...)
 	if err != nil {
@@ -27,7 +29,7 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 
 	for _, path := range paths {
 
-		scanner, err := repo.Scan(path)
+		scanner, err := workspace.NewFileScanner(ctx.WorkspaceRoot(), path, ctx.GotRoot())
 		if err != nil {
 			ctx.OutError(err)
 			return 128
@@ -39,11 +41,11 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 			return 128
 		}
 
-		repo.Objects().Store(blobs...)
+		db.Objects().Store(blobs...)
 
 	}
 
-	if err := repo.Index().Update(ws.Index()); err != nil {
+	if err := db.Index().Update(ws.Index()); err != nil {
 		ctx.OutError(err)
 		return 128
 	}

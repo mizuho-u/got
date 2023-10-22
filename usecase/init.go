@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mizuho-u/got/database"
+	"github.com/mizuho-u/got/io/database/fs"
 )
 
 type ExitCode int
@@ -19,7 +19,7 @@ func InitDir(ctx GotContext) ExitCode {
 		return 128
 	}
 
-	if err := database.NewRefs(ctx.GotRoot()).UpdateHEAD("ref: refs/heads/main"); err != nil {
+	if err := fs.NewRefs(ctx.GotRoot()).UpdateHEAD("ref: refs/heads/main"); err != nil {
 		return 128
 	}
 

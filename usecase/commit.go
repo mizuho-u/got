@@ -5,26 +5,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mizuho-u/got/database"
+	"github.com/mizuho-u/got/io/database"
+	"github.com/mizuho-u/got/io/database/fs"
 	"github.com/mizuho-u/got/model"
 )
 
 func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 
-	var repo database.Repository = database.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
-	defer repo.Close()
+	var db database.Database = fs.NewFS(ctx.WorkspaceRoot(), ctx.GotRoot())
+	defer db.Close()
 
-	err := repo.Index().OpenForRead()
+	err := db.Index().OpenForRead()
 	if err != nil {
 		return 128
 	}
 
-	ws, err := model.NewWorkspace(model.WithIndex(repo.Index()))
+	ws, err := model.NewWorkspace(model.WithIndex(db.Index()))
 	if err != nil {
 		return 128
 	}
 
-	parent, err := repo.Refs().HEAD()
+	parent, err := db.Refs().HEAD()
 	if err != nil {
 		return 128
 	}
@@ -34,11 +35,11 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	if err := repo.Objects().Store(ws.Objects()...); err != nil {
+	if err := db.Objects().Store(ws.Objects()...); err != nil {
 		return 128
 	}
 
-	if err := repo.Refs().UpdateHEAD(commitId); err != nil {
+	if err := db.Refs().UpdateHEAD(commitId); err != nil {
 		return 128
 	}
 

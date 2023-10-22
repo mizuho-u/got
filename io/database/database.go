@@ -5,11 +5,10 @@ import (
 	"github.com/mizuho-u/got/model/object"
 )
 
-type Repository interface {
+type Database interface {
 	Refs() Refs
 	Objects() Objects
 	Index() Index
-	Scan(name string) (model.WorkspaceScanner, error)
 	Close() error
 }
 
