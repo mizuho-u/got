@@ -24,10 +24,12 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	parent, err := db.Refs().HEAD()
+	head, err := db.Refs().Head()
 	if err != nil {
 		return 128
 	}
+
+	parent := head.OID()
 
 	commitId, err := repo.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
 	if err != nil {

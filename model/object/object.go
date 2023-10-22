@@ -81,7 +81,7 @@ func ParseObject(rawdata []byte) (Object, error) {
 	object.content = buffer.Next(size)
 
 	sha1 := sha1.New()
-	_, err = sha1.Write(object.content)
+	_, err = sha1.Write(rawdata)
 	if err != nil {
 		return nil, err
 	}

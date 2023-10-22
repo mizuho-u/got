@@ -12,22 +12,17 @@ func ShowHead(ctx GotContext, paths ...string) ExitCode {
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
-	head, err := db.Refs().HEAD()
+	head, err := db.Refs().Head()
 	if err != nil {
 		return 128
 	}
 
-	o, err := db.Objects().Load(head)
-	if err != nil {
-		return 128
+	tree := ""
+	if head != nil {
+		tree = head.Tree()
 	}
 
-	commit, err := object.ParseCommit(o)
-	if err != nil {
-		return 128
-	}
-
-	db.Objects().ScanTree(commit.Tree()).Walk(func(name string, entry object.Entry) {
+	db.Objects().ScanTree(tree).Walk(func(name string, entry object.Entry) {
 		if entry.IsTree() {
 			return
 		}

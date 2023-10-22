@@ -14,13 +14,12 @@ type Database interface {
 }
 
 type refs interface {
-	HEAD() (string, error)
+	Head() (object.Commit, error)
 	UpdateHEAD(commitId string) error
 }
 
 type objects interface {
 	Store(objects ...object.Object) error
-	Load(oid string) (object.Object, error)
 	ScanTree(oid string) model.TreeScanner
 }
 

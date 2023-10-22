@@ -2,15 +2,21 @@ package object
 
 import (
 	"bytes"
+
 	"strings"
 )
 
-type Commit struct {
+type Commit interface {
+	Object
+	Tree() string
+}
+
+type commit struct {
 	parent, tree, author, message string
 	*object
 }
 
-func NewCommit(parent, tree, author, message string) (*Commit, error) {
+func NewCommit(parent, tree, author, message string) (*commit, error) {
 
 	content := []byte{}
 
@@ -28,20 +34,26 @@ func NewCommit(parent, tree, author, message string) (*Commit, error) {
 		return nil, err
 	}
 
-	return &Commit{parent, tree, author, message, object}, nil
+	return &commit{parent, tree, author, message, object}, nil
 }
 
-func ParseCommit(object Object) (*Commit, error) {
+func EmptyCommit() Commit {
 
-	commit := &Commit{}
+	c := &commit{object: &object{id: ""}}
+	return c
+}
 
-	buf := bytes.NewBuffer(object.Content())
+func ParseCommit(obj Object) (Commit, error) {
+
+	c := &commit{object: &object{id: obj.OID()}}
+
+	buf := bytes.NewBuffer(obj.Content())
 
 	str, err := buf.ReadString(0x0A)
 	if err != nil {
 		return nil, err
 	}
-	commit.tree = strings.TrimSuffix(strings.TrimPrefix(str, "tree "), "\n")
+	c.tree = strings.TrimSuffix(strings.TrimPrefix(str, "tree "), "\n")
 
 	str, err = buf.ReadString(0x0A)
 	if err != nil {
@@ -50,7 +62,7 @@ func ParseCommit(object Object) (*Commit, error) {
 
 	if strings.HasPrefix(str, "parent") {
 
-		commit.parent = strings.TrimRight(strings.TrimLeft(str, "parent "), "\n")
+		c.parent = strings.TrimRight(strings.TrimLeft(str, "parent "), "\n")
 
 		str, err = buf.ReadString(0x0A)
 		if err != nil {
@@ -58,25 +70,25 @@ func ParseCommit(object Object) (*Commit, error) {
 		}
 	}
 
-	commit.author = strings.TrimRight(strings.TrimLeft(str, "author "), "\n")
+	c.author = strings.TrimRight(strings.TrimLeft(str, "author "), "\n")
 
 	str, err = buf.ReadString(0x0A)
 	if err != nil {
 		return nil, err
 	}
-	commit.author = strings.TrimSuffix(strings.TrimPrefix(str, "committer "), "\n")
+	c.author = strings.TrimSuffix(strings.TrimPrefix(str, "committer "), "\n")
 
 	_, err = buf.ReadByte()
 	if err != nil {
 		return nil, err
 	}
 
-	commit.message = buf.String()
+	c.message = buf.String()
 
-	return commit, nil
+	return c, nil
 
 }
 
-func (c *Commit) Tree() string {
+func (c *commit) Tree() string {
 	return c.tree
 }

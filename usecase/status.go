@@ -6,7 +6,6 @@ import (
 	"github.com/mizuho-u/got/io/database"
 	"github.com/mizuho-u/got/io/workspace"
 	"github.com/mizuho-u/got/model"
-	"github.com/mizuho-u/got/model/object"
 )
 
 func Status(ctx GotContext) ExitCode {
@@ -30,23 +29,11 @@ func Status(ctx GotContext) ExitCode {
 	}
 	opt = append(opt, model.WithWorkspaceScanner(scanner))
 
-	head, err := db.Refs().HEAD()
+	head, err := db.Refs().Head()
 	if err != nil {
 		return 128
 	}
-
-	if head != "" {
-		o, err := db.Objects().Load(head)
-		if err != nil {
-			return 128
-		}
-
-		commit, err := object.ParseCommit(o)
-		if err != nil {
-			return 128
-		}
-		opt = append(opt, model.WithTreeScanner(db.Objects().ScanTree(commit.Tree())))
-	}
+	opt = append(opt, model.WithTreeScanner(db.Objects().ScanTree(head.Tree())))
 
 	repo, err := model.NewRepository(opt...)
 	if err != nil {

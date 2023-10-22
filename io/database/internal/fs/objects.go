@@ -26,7 +26,7 @@ func (s *Objects) Store(objects ...object.Object) error {
 	for _, o := range objects {
 
 		path := filepath.Join(s.gotpath, "objects", o.OID()[0:2], o.OID()[2:])
-		if s.isExist(path) {
+		if isExist(path) {
 			continue
 		}
 
@@ -45,10 +45,10 @@ func (s *Objects) Store(objects ...object.Object) error {
 
 }
 
-func (s *Objects) Load(oid string) (object.Object, error) {
+func load(gotpath, oid string) (object.Object, error) {
 
-	path := filepath.Join(s.gotpath, "objects", oid[0:2], oid[2:])
-	if !s.isExist(path) {
+	path := filepath.Join(gotpath, "objects", oid[0:2], oid[2:])
+	if !isExist(path) {
 		return nil, fmt.Errorf("%s not found", oid)
 	}
 
@@ -57,7 +57,7 @@ func (s *Objects) Load(oid string) (object.Object, error) {
 		return nil, err
 	}
 
-	data, err := s.decompress(compressed)
+	data, err := decompress(compressed)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (s *Objects) Load(oid string) (object.Object, error) {
 	return object.ParseObject(data)
 }
 
-func (s *Objects) isExist(path string) bool {
+func isExist(path string) bool {
 
 	// the path exists if err is nil
 	if _, err := os.Stat(path); err == nil {
@@ -115,7 +115,7 @@ func (s *Objects) compress(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (s *Objects) decompress(data []byte) ([]byte, error) {
+func decompress(data []byte) ([]byte, error) {
 
 	b := bytes.NewBuffer(data)
 
@@ -153,6 +153,11 @@ func newTreeScanner(gotroot, rootTree string) *treeScanner {
 }
 
 func (ts *treeScanner) Walk(f func(name string, obj object.Entry)) {
+
+	if ts.rootTree == "" {
+		return
+	}
+
 	ts.walk(ts.rootTree, "", f)
 }
 
