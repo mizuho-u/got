@@ -10,12 +10,13 @@ import (
 )
 
 type workspace struct {
-	objects   []object.Object
-	index     *index
-	scanner   WorkspaceScanner
-	changed   map[string]string
-	untracked []string
-	stats     map[string]Entry
+	objects     []object.Object
+	index       *index
+	scanner     WorkspaceScanner
+	treeScanner TreeScanner
+	changed     map[string]string
+	untracked   []string
+	stats       map[string]Entry
 }
 
 type WorkspaceOption func(*workspace) error
@@ -44,6 +45,14 @@ func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 
 }
 
+func WithTreeScanner(scanner TreeScanner) WorkspaceOption {
+
+	return func(w *workspace) error {
+		w.treeScanner = scanner
+		return nil
+	}
+
+}
 func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 
 	index, err := newIndex()
@@ -201,24 +210,48 @@ func (w *workspace) scan() error {
 }
 
 const (
-	fileDeleted  string = " D"
-	fileModified string = " M"
+	statusNone         string = " "
+	statusIndexAdded   string = "A"
+	statusFileDeleted  string = "D"
+	statusFileModified string = "M"
 )
 
 func (w *workspace) detectChanges() {
 
+	head := map[string]object.Entry{}
+
+	if w.treeScanner != nil {
+		w.treeScanner.Walk(func(name string, entry object.Entry) {
+			if entry.IsTree() {
+				return
+			}
+			head[name] = entry
+		})
+	}
+
 	for _, e := range w.index.entries {
 
-		stat, ok := w.stats[e.filename]
-		if !ok {
-			w.changed[e.filename] = fileDeleted
+		status := ""
+
+		if _, ok := head[e.filename]; !ok {
+			status = statusIndexAdded
+		} else {
+			status = statusNone
+		}
+
+		if stat, ok := w.stats[e.filename]; !ok {
+			status += statusFileDeleted
+		} else if !w.index.match(stat) {
+			status += statusFileModified
+		} else {
+			status += statusNone
+		}
+
+		if status == (statusNone + statusNone) {
 			continue
 		}
 
-		if !w.index.match(stat) {
-			w.changed[e.filename] = fileModified
-		}
-
+		w.changed[e.filename] = status
 	}
 
 }

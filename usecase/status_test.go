@@ -231,3 +231,64 @@ func TestStatusChangedContents(t *testing.T) {
 	}
 
 }
+
+func TestStatusHeadIndexDifferences(t *testing.T) {
+
+	testt := []struct {
+		description      string
+		newAddedContents map[string]string
+		expect           string
+	}{
+		{
+			description:      "reports a file added to a tracked directory",
+			newAddedContents: map[string]string{"a/4.txt": "four"},
+			expect:           "A  a/4.txt\n",
+		},
+		{
+			description:      "prints files with changed contents",
+			newAddedContents: map[string]string{"d/e/5.txt": "five"},
+			expect:           "A  d/e/5.txt\n",
+		},
+	}
+
+	for _, tc := range testt {
+
+		t.Run(tc.description, func(t *testing.T) {
+
+			now := time.Now()
+
+			dir := initDir(t)
+
+			f1 := createFile(t, dir, "1.txt", []byte("one"))
+			modifyFileTime(t, dir, "1.txt", now, now)
+			add(t, dir, f1)
+
+			f2 := createFile(t, dir, "a/2.txt", []byte("two"))
+			modifyFileTime(t, dir, "a/2.txt", now, now)
+			add(t, dir, f2)
+
+			f3 := createFile(t, dir, "a/b/3.txt", []byte("three"))
+			modifyFileTime(t, dir, "a/b/3.txt", now, now)
+			add(t, dir, f3)
+
+			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+
+			for file, contents := range tc.newAddedContents {
+				f := createFile(t, dir, file, []byte(contents))
+				add(t, dir, f)
+			}
+
+			out := &bytes.Buffer{}
+			if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+				t.Error("expect exit code 0, got ", code)
+			}
+
+			if out.String() != tc.expect {
+				t.Errorf("expect \n%s, got \n%s", tc.expect, out)
+			}
+
+		})
+
+	}
+
+}

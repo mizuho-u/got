@@ -1,7 +1,10 @@
 package database
 
 import (
+	"bytes"
+	"compress/zlib"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/mizuho-u/got/internal"
 	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/model/object"
 )
 
 type FS struct {
@@ -164,4 +168,90 @@ func (fs *fileScanner) enqueueFile(dir string, info fs.FileInfo) error {
 	fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), Reader: reader})
 
 	return nil
+}
+
+type treeScanner struct {
+	gotroot  string
+	rootTree string
+}
+
+func newTreeScanner(gotroot, rootTree string) *treeScanner {
+	return &treeScanner{gotroot, rootTree}
+}
+
+func (ts *treeScanner) Walk(f func(name string, obj object.Entry)) {
+	ts.walk(ts.rootTree, "", f)
+}
+
+func (ts *treeScanner) walk(oid, path string, f func(name string, obj object.Entry)) {
+
+	o, err := ts.load(oid)
+	if err != nil {
+		return
+	}
+
+	tree, err := object.ParseTree(o)
+	if err != nil {
+		return
+	}
+
+	ctree := []object.Entry{}
+	for _, entry := range tree.Children() {
+
+		if entry.IsTree() {
+			ctree = append(ctree, entry)
+			continue
+		}
+
+		f(filepath.Join(path, entry.Basename()), entry)
+	}
+
+	for _, entry := range ctree {
+		f(filepath.Join(path, entry.Basename()), entry)
+		ts.walk(entry.OID(), filepath.Join(path, entry.Basename()), f)
+	}
+
+}
+
+func (ts *treeScanner) load(oid string) (object.Object, error) {
+
+	path := filepath.Join(ts.gotroot, "objects", oid[0:2], oid[2:])
+	if !ts.isExist(path) {
+		return nil, fmt.Errorf("%s not found", oid)
+	}
+
+	compressed, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ts.decompress(compressed)
+	if err != nil {
+		return nil, err
+	}
+
+	return object.ParseObject(data)
+}
+
+func (ts *treeScanner) isExist(path string) bool {
+
+	// the path exists if err is nil
+	if _, err := os.Stat(path); err == nil {
+		return true
+	}
+
+	return false
+
+}
+
+func (ts *treeScanner) decompress(data []byte) ([]byte, error) {
+
+	b := bytes.NewBuffer(data)
+
+	zw, err := zlib.NewReader(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return io.ReadAll(zw)
 }

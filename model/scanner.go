@@ -1,6 +1,10 @@
 package model
 
-import "io"
+import (
+	"io"
+
+	"github.com/mizuho-u/got/model/object"
+)
 
 type WorkspaceScanner interface {
 	Next() (Entry, error)
@@ -12,4 +16,8 @@ type Entry interface {
 	Parents() []string
 	Stats() *FileStat
 	io.Reader
+}
+
+type TreeScanner interface {
+	Walk(f func(name string, obj object.Entry))
 }

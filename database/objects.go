@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mizuho-u/got/model"
 	"github.com/mizuho-u/got/model/object"
 )
 
@@ -136,4 +137,8 @@ func (s *objects) StoreAll(objects ...object.Object) error {
 
 	return nil
 
+}
+
+func (s *objects) ScanTree(oid string) model.TreeScanner {
+	return newTreeScanner(s.gotpath, oid)
 }
