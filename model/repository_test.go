@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestCommitWorkspace(t *testing.T) {
+func TestCommitRepository(t *testing.T) {
 
 	// arrange
 	index, err := newIndex()
@@ -27,12 +27,12 @@ func TestCommitWorkspace(t *testing.T) {
 	}
 
 	// act
-	ws, err := NewWorkspace(WithIndex(buf))
+	repo, err := NewRepository(WithIndex(buf))
 	if err != nil {
 		t.Fatal("create workspace failed. ", err)
 	}
 
-	commitId, err := ws.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319))
+	commitId, err := repo.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319))
 	if err != nil {
 		t.Fatal("commit failed. ", err)
 	}
@@ -42,13 +42,13 @@ func TestCommitWorkspace(t *testing.T) {
 		t.Fatalf("commitId not match. expect %s got %s", "a5969546fc417f4b362e5290ad8ee49b044bfc0e", commitId)
 	}
 
-	if len(ws.Objects()) != 2 {
-		t.Fatalf("unexpected objects length want 2 got %d", len(ws.Objects()))
+	if len(repo.Objects()) != 2 {
+		t.Fatalf("unexpected objects length want 2 got %d", len(repo.Objects()))
 	}
 
 	// expect tree, commit objects to be created
 	created := 0b0000
-	for _, o := range ws.Objects() {
+	for _, o := range repo.Objects() {
 
 		switch getclass(o.Content()) {
 		case "blob":
@@ -95,7 +95,7 @@ func getclass(content []byte) string {
 
 }
 
-func TestNewWorkspaceWithIndex(t *testing.T) {
+func TestNewRepositoryWithIndex(t *testing.T) {
 
 	source := []byte{
 		0x44, 0x49, 0x52, 0x43, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x64, 0x07, 0x3e, 0x95,
@@ -107,12 +107,12 @@ func TestNewWorkspaceWithIndex(t *testing.T) {
 		0xef, 0x07, 0xbf, 0xac, 0x40, 0xfb, 0x34, 0x1e, 0x19, 0x88, 0x6e, 0x05, 0x96, 0x94, 0x5e, 0x06,
 	}
 
-	ws, err := NewWorkspace(WithIndex(bytes.NewBuffer(source)))
+	repo, err := NewRepository(WithIndex(bytes.NewBuffer(source)))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	serialized, err := ws.Index().Serialize()
+	serialized, err := repo.Index().Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}

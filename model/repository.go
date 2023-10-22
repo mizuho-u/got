@@ -9,7 +9,7 @@ import (
 	"github.com/mizuho-u/got/model/object"
 )
 
-type workspace struct {
+type repository struct {
 	objects     []object.Object
 	index       *index
 	scanner     WorkspaceScanner
@@ -19,11 +19,11 @@ type workspace struct {
 	stats       map[string]Entry
 }
 
-type WorkspaceOption func(*workspace) error
+type WorkspaceOption func(*repository) error
 
 func WithIndex(data io.Reader) WorkspaceOption {
 
-	return func(w *workspace) error {
+	return func(w *repository) error {
 
 		index, err := newIndex(indexSource(data))
 		if err != nil {
@@ -38,7 +38,7 @@ func WithIndex(data io.Reader) WorkspaceOption {
 
 func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 
-	return func(w *workspace) error {
+	return func(w *repository) error {
 		w.scanner = scanner
 		return nil
 	}
@@ -47,20 +47,20 @@ func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 
 func WithTreeScanner(scanner TreeScanner) WorkspaceOption {
 
-	return func(w *workspace) error {
+	return func(w *repository) error {
 		w.treeScanner = scanner
 		return nil
 	}
 
 }
-func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
+func NewRepository(options ...WorkspaceOption) (*repository, error) {
 
 	index, err := newIndex()
 	if err != nil {
 		return nil, err
 	}
 
-	ws := &workspace{objects: []object.Object{}, index: index, changed: map[string]string{}, untracked: []string{}, stats: map[string]Entry{}}
+	ws := &repository{objects: []object.Object{}, index: index, changed: map[string]string{}, untracked: []string{}, stats: map[string]Entry{}}
 
 	for _, opt := range options {
 		if err := opt(ws); err != nil {
@@ -72,32 +72,32 @@ func NewWorkspace(options ...WorkspaceOption) (*workspace, error) {
 
 }
 
-func (w *workspace) Untracked() []string {
+func (repo *repository) Untracked() []string {
 
 	// 呼び出しのたびにソートするのは無駄かも
-	sort.SliceStable(w.untracked, func(i, j int) bool {
-		return w.untracked[i] < w.untracked[j]
+	sort.SliceStable(repo.untracked, func(i, j int) bool {
+		return repo.untracked[i] < repo.untracked[j]
 	})
 
-	return w.untracked
+	return repo.untracked
 }
 
-func (w *workspace) Changed() ([]string, map[string]string) {
+func (repo *repository) Changed() ([]string, map[string]string) {
 
-	files := internal.Keys(w.changed)
+	files := internal.Keys(repo.changed)
 
 	sort.SliceStable(files, func(i, j int) bool {
 		return files[i] < files[j]
 	})
 
-	return files, w.changed
+	return files, repo.changed
 }
 
-func (w *workspace) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
+func (repo *repository) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
 
 	entries := []object.Entry{}
 
-	for _, entry := range w.index.entries {
+	for _, entry := range repo.index.entries {
 		entries = append(entries, object.NewTreeEntry(entry.filename, entry.permission(), entry.oid))
 	}
 
@@ -108,7 +108,7 @@ func (w *workspace) Commit(parent, author, email, message string, now time.Time)
 
 	root.Walk(func(tree object.Object) error {
 
-		w.objects = append(w.objects, tree)
+		repo.objects = append(repo.objects, tree)
 		return nil
 
 	})
@@ -118,7 +118,7 @@ func (w *workspace) Commit(parent, author, email, message string, now time.Time)
 	if err != nil {
 		return commitId, err
 	}
-	w.objects = append(w.objects, commit)
+	repo.objects = append(repo.objects, commit)
 
 	commitId = commit.OID()
 
@@ -126,7 +126,7 @@ func (w *workspace) Commit(parent, author, email, message string, now time.Time)
 
 }
 
-func (w *workspace) Add(scanner WorkspaceScanner) ([]object.Object, error) {
+func (repo *repository) Add(scanner WorkspaceScanner) ([]object.Object, error) {
 
 	objects := []object.Object{}
 
@@ -149,33 +149,33 @@ func (w *workspace) Add(scanner WorkspaceScanner) ([]object.Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		w.objects = append(w.objects, blob)
+		repo.objects = append(repo.objects, blob)
 
-		w.index.add(NewIndexEntry(f.Name(), blob.OID(), f.Stats()))
+		repo.index.add(NewIndexEntry(f.Name(), blob.OID(), f.Stats()))
 
 	}
 
 }
 
-func (w *workspace) Scan() error {
+func (repo *repository) Scan() error {
 
-	if err := w.scan(); err != nil {
+	if err := repo.scan(); err != nil {
 		return err
 	}
 
-	w.detectChanges()
+	repo.detectChanges()
 
 	return nil
 
 }
 
-func (w *workspace) scan() error {
+func (repo *repository) scan() error {
 
 	untrackedSet := map[string]struct{}{}
 
 	for {
 
-		p, err := w.scanner.Next()
+		p, err := repo.scanner.Next()
 		if err != nil {
 			return err
 		}
@@ -184,16 +184,16 @@ func (w *workspace) scan() error {
 			break
 		}
 
-		w.stats[p.Name()] = p
+		repo.stats[p.Name()] = p
 
-		if w.Index().tracked(p.Name()) {
+		if repo.Index().tracked(p.Name()) {
 			continue
 		}
 
 		entry := p.Name()
 		for _, d := range p.Parents() {
 
-			if !w.Index().tracked(d) {
+			if !repo.Index().tracked(d) {
 				entry = d + "/"
 				break
 			}
@@ -203,7 +203,7 @@ func (w *workspace) scan() error {
 	}
 
 	for k := range untrackedSet {
-		w.untracked = append(w.untracked, k)
+		repo.untracked = append(repo.untracked, k)
 	}
 
 	return nil
@@ -216,12 +216,12 @@ const (
 	statusFileModified string = "M"
 )
 
-func (w *workspace) detectChanges() {
+func (repo *repository) detectChanges() {
 
 	head := map[string]object.Entry{}
 
-	if w.treeScanner != nil {
-		w.treeScanner.Walk(func(name string, entry object.Entry) {
+	if repo.treeScanner != nil {
+		repo.treeScanner.Walk(func(name string, entry object.Entry) {
 			if entry.IsTree() {
 				return
 			}
@@ -229,7 +229,7 @@ func (w *workspace) detectChanges() {
 		})
 	}
 
-	for _, e := range w.index.entries {
+	for _, e := range repo.index.entries {
 
 		status := ""
 
@@ -239,9 +239,9 @@ func (w *workspace) detectChanges() {
 			status = statusNone
 		}
 
-		if stat, ok := w.stats[e.filename]; !ok {
+		if stat, ok := repo.stats[e.filename]; !ok {
 			status += statusFileDeleted
-		} else if !w.index.match(stat) {
+		} else if !repo.index.match(stat) {
 			status += statusFileModified
 		} else {
 			status += statusNone
@@ -251,15 +251,15 @@ func (w *workspace) detectChanges() {
 			continue
 		}
 
-		w.changed[e.filename] = status
+		repo.changed[e.filename] = status
 	}
 
 }
 
-func (w *workspace) Objects() []object.Object {
-	return w.objects
+func (repo *repository) Objects() []object.Object {
+	return repo.objects
 }
 
-func (w *workspace) Index() Index {
-	return w.index
+func (repo *repository) Index() Index {
+	return repo.index
 }

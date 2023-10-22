@@ -48,26 +48,26 @@ func Status(ctx GotContext) ExitCode {
 		opt = append(opt, model.WithTreeScanner(db.Objects().ScanTree(commit.Tree())))
 	}
 
-	ws, err := model.NewWorkspace(opt...)
+	repo, err := model.NewRepository(opt...)
 	if err != nil {
 		ctx.OutError(err)
 		return 128
 	}
 
-	if ws.Scan() != nil {
+	if repo.Scan() != nil {
 		return 128
 	}
 
-	files, types := ws.Changed()
+	files, types := repo.Changed()
 	for _, f := range files {
 		ctx.Out(fmt.Sprintf("%s %s\n", types[f], f))
 	}
 
-	for _, v := range ws.Untracked() {
+	for _, v := range repo.Untracked() {
 		ctx.Out(fmt.Sprintf("?? %s\n", v))
 	}
 
-	if err := db.Index().Update(ws.Index()); err != nil {
+	if err := db.Index().Update(repo.Index()); err != nil {
 		ctx.OutError(err)
 		return 128
 	}

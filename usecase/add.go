@@ -20,7 +20,7 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 	if !db.Index().IsNew() {
 		opt = append(opt, model.WithIndex(db.Index()))
 	}
-	ws, err := model.NewWorkspace(opt...)
+	repo, err := model.NewRepository(opt...)
 	if err != nil {
 		ctx.OutError(err)
 		return 128
@@ -34,7 +34,7 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 			return 128
 		}
 
-		blobs, err := ws.Add(scanner)
+		blobs, err := repo.Add(scanner)
 		if err != nil {
 			ctx.OutError(err)
 			return 128
@@ -44,7 +44,7 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 
 	}
 
-	if err := db.Index().Update(ws.Index()); err != nil {
+	if err := db.Index().Update(repo.Index()); err != nil {
 		ctx.OutError(err)
 		return 128
 	}

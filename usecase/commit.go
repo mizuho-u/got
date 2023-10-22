@@ -19,7 +19,7 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	ws, err := model.NewWorkspace(model.WithIndex(db.Index()))
+	repo, err := model.NewRepository(model.WithIndex(db.Index()))
 	if err != nil {
 		return 128
 	}
@@ -29,12 +29,12 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	commitId, err := ws.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
+	commitId, err := repo.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
 	if err != nil {
 		return 128
 	}
 
-	if err := db.Objects().Store(ws.Objects()...); err != nil {
+	if err := db.Objects().Store(repo.Objects()...); err != nil {
 		return 128
 	}
 
