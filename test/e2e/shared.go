@@ -56,6 +56,15 @@ func createDir(t testing.TB, dir, name string) {
 
 }
 
+func removeAll(t *testing.T, dir, name string) {
+
+	t.Helper()
+
+	if err := os.RemoveAll(filepath.Join(dir, name)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func initDir(t *testing.T, build string) string {
 
 	t.Helper()

@@ -105,3 +105,35 @@ func TestStatusModifiedFiles(t *testing.T) {
 	}
 
 }
+
+func TestStatusDeletedFiles(t *testing.T) {
+
+	build := buildpath(t)
+
+	dir := initDir(t, build)
+
+	f := createFile(t, dir, "a", []byte("hello"))
+	executeCmd(t, build+" -C "+dir+" add "+f)
+	executeCmd(t, `echo "commit" | `+build+" -C "+dir+" commit")
+
+	// commit直後は差分なし
+	out := executeCmd(t, build+" -C "+dir+" status")
+	if out != "" {
+		t.Errorf("expect empty, but %s", out)
+	}
+
+	// ファイルをワークスペースとインデックスから削除する
+	removeAll(t, dir, "a")
+	removeAll(t, dir, ".git/index")
+	executeCmd(t, build+" -C "+dir+" add "+dir)
+
+	// 削除したファイルと同じ名前のディレクトリをインデックスに追加しても
+	// statusにはファイルaのdeleteが表示される
+	f = createFile(t, dir, "a/b.txt", []byte("hello, world"))
+	executeCmd(t, build+" -C "+dir+" add "+f)
+
+	out = executeCmd(t, build+" -C "+dir+" status")
+	if out != "D  a\nA  a/b.txt\n" {
+		t.Errorf("expect \"D  a\", but %s", out)
+	}
+}

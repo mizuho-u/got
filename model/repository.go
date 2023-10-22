@@ -10,13 +10,13 @@ import (
 )
 
 type repository struct {
-	objects     []object.Object
-	index       *index
-	scanner     WorkspaceScanner
-	treeScanner TreeScanner
-	changed     map[string]string
-	untracked   []string
-	stats       map[string]Entry
+	objects          []object.Object
+	index            *index
+	workspaceScanner WorkspaceScanner
+	workspaceFiles   map[string]Entry
+	treeScanner      TreeScanner
+	changed          map[string]string
+	untracked        []string
 }
 
 type WorkspaceOption func(*repository) error
@@ -39,7 +39,7 @@ func WithIndex(data io.Reader) WorkspaceOption {
 func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 
 	return func(w *repository) error {
-		w.scanner = scanner
+		w.workspaceScanner = scanner
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func NewRepository(options ...WorkspaceOption) (*repository, error) {
 		return nil, err
 	}
 
-	ws := &repository{objects: []object.Object{}, index: index, changed: map[string]string{}, untracked: []string{}, stats: map[string]Entry{}}
+	ws := &repository{objects: []object.Object{}, index: index, changed: map[string]string{}, untracked: []string{}, workspaceFiles: map[string]Entry{}}
 
 	for _, opt := range options {
 		if err := opt(ws); err != nil {
@@ -175,7 +175,7 @@ func (repo *repository) scan() error {
 
 	for {
 
-		p, err := repo.scanner.Next()
+		p, err := repo.workspaceScanner.Next()
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ func (repo *repository) scan() error {
 			break
 		}
 
-		repo.stats[p.Name()] = p
+		repo.workspaceFiles[p.Name()] = p
 
 		if repo.Index().tracked(p.Name()) {
 			continue
@@ -214,6 +214,7 @@ const (
 	statusIndexAdded   string = "A"
 	statusFileDeleted  string = "D"
 	statusFileModified string = "M"
+	statusUnchanged    string = statusNone + statusNone
 )
 
 func (repo *repository) detectChanges() {
@@ -221,11 +222,19 @@ func (repo *repository) detectChanges() {
 	head := map[string]object.Entry{}
 
 	if repo.treeScanner != nil {
+
 		repo.treeScanner.Walk(func(name string, entry object.Entry) {
 			if entry.IsTree() {
 				return
 			}
+
+			if !repo.index.trackedFile(name) {
+				repo.changed[name] = statusFileDeleted + statusNone
+				return
+			}
+
 			head[name] = entry
+
 		})
 	}
 
@@ -241,7 +250,7 @@ func (repo *repository) detectChanges() {
 			status = statusNone
 		}
 
-		if stat, ok := repo.stats[e.filename]; !ok {
+		if stat, ok := repo.workspaceFiles[e.filename]; !ok {
 			status += statusFileDeleted
 		} else if !repo.index.match(stat) {
 			status += statusFileModified
@@ -249,7 +258,7 @@ func (repo *repository) detectChanges() {
 			status += statusNone
 		}
 
-		if status == (statusNone + statusNone) {
+		if status == statusUnchanged {
 			continue
 		}
 

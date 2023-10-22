@@ -250,6 +250,13 @@ func (i *index) tracked(name string) bool {
 	return inEntries || inParents
 }
 
+func (i *index) trackedFile(name string) bool {
+
+	_, inEntries := i.entries[name]
+
+	return inEntries
+}
+
 func (i *index) match(e Entry) bool {
 
 	entry, inEntries := i.entries[e.Name()]

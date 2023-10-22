@@ -239,6 +239,7 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 		newAddedFiles            map[string]string
 		newModifiedFiles         []string
 		newModifiedContentsFiles map[string]string
+		deleted                  []string
 		expect                   string
 	}{
 		{
@@ -260,6 +261,16 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 			description:              "reports modified contents",
 			newModifiedContentsFiles: map[string]string{"a/b/3.txt": "changed"},
 			expect:                   "M  a/b/3.txt\n",
+		},
+		{
+			description: "reports deleted files",
+			deleted:     []string{"1.txt"},
+			expect:      "D  1.txt\n",
+		},
+		{
+			description: "reports all deleted files inside directories",
+			deleted:     []string{"a"},
+			expect:      "D  a/2.txt\nD  a/b/3.txt\n",
 		},
 	}
 
@@ -298,6 +309,12 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 			for file, contents := range tc.newModifiedContentsFiles {
 				f := createFile(t, dir, file, []byte(contents))
 				add(t, dir, f)
+			}
+
+			for _, path := range tc.deleted {
+				removeAll(t, dir, path)
+				removeAll(t, dir, ".git/index")
+				add(t, dir, dir)
 			}
 
 			out := &bytes.Buffer{}
