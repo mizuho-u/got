@@ -233,8 +233,10 @@ func (repo *repository) detectChanges() {
 
 		status := ""
 
-		if _, ok := head[e.filename]; !ok {
+		if h, ok := head[e.filename]; !ok {
 			status = statusIndexAdded
+		} else if e.oid != h.OID() || e.permission() != h.Permission() {
+			status = statusFileModified
 		} else {
 			status = statusNone
 		}

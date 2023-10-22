@@ -235,19 +235,31 @@ func TestStatusChangedContents(t *testing.T) {
 func TestStatusHeadIndexDifferences(t *testing.T) {
 
 	testt := []struct {
-		description      string
-		newAddedContents map[string]string
-		expect           string
+		description              string
+		newAddedFiles            map[string]string
+		newModifiedFiles         []string
+		newModifiedContentsFiles map[string]string
+		expect                   string
 	}{
 		{
-			description:      "reports a file added to a tracked directory",
-			newAddedContents: map[string]string{"a/4.txt": "four"},
-			expect:           "A  a/4.txt\n",
+			description:   "reports a file added to a tracked directory",
+			newAddedFiles: map[string]string{"a/4.txt": "four"},
+			expect:        "A  a/4.txt\n",
 		},
 		{
-			description:      "prints files with changed contents",
-			newAddedContents: map[string]string{"d/e/5.txt": "five"},
-			expect:           "A  d/e/5.txt\n",
+			description:   "prints files with changed contents",
+			newAddedFiles: map[string]string{"d/e/5.txt": "five"},
+			expect:        "A  d/e/5.txt\n",
+		},
+		{
+			description:      "reports modified modes",
+			newModifiedFiles: []string{"1.txt"},
+			expect:           "M  1.txt\n",
+		},
+		{
+			description:              "reports modified contents",
+			newModifiedContentsFiles: map[string]string{"a/b/3.txt": "changed"},
+			expect:                   "M  a/b/3.txt\n",
 		},
 	}
 
@@ -273,7 +285,17 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 
 			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
 
-			for file, contents := range tc.newAddedContents {
+			for file, contents := range tc.newAddedFiles {
+				f := createFile(t, dir, file, []byte(contents))
+				add(t, dir, f)
+			}
+
+			for _, file := range tc.newModifiedFiles {
+				modifyFileMode(t, dir, file, 0755)
+				add(t, dir, filepath.Join(dir, file))
+			}
+
+			for file, contents := range tc.newModifiedContentsFiles {
 				f := createFile(t, dir, file, []byte(contents))
 				add(t, dir, f)
 			}
