@@ -73,3 +73,35 @@ func TestStatus(t *testing.T) {
 	}
 
 }
+
+func TestStatusModifiedFiles(t *testing.T) {
+
+	build := buildpath(t)
+
+	dir := initDir(t, build)
+
+	f := createFile(t, dir, "a.txt", []byte("hello"))
+	executeCmd(t, build+" -C "+dir+" add "+f)
+	executeCmd(t, `echo "commit" | `+build+" -C "+dir+" commit")
+
+	// commit直後は差分なし
+	out := executeCmd(t, build+" -C "+dir+" status")
+	if out != "" {
+		t.Errorf("expect empty, but %s", out)
+	}
+
+	// ファイルに変更を加えると、indexとworkspaceに差が出る
+	f = createFile(t, dir, "a.txt", []byte("hello, world"))
+	out = executeCmd(t, build+" -C "+dir+" status")
+	if out != " M a.txt\n" {
+		t.Errorf("expect \" M a.txt\", but %s", out)
+	}
+
+	// indexに変更を加えると、indexとheadに差が出る
+	executeCmd(t, build+" -C "+dir+" add "+f)
+	out = executeCmd(t, build+" -C "+dir+" status")
+	if out != "M  a.txt\n" {
+		t.Errorf("expect \"M  a.txt\", but %s", out)
+	}
+
+}
