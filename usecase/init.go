@@ -14,7 +14,7 @@ func InitDir(ctx GotContext) ExitCode {
 		return 128
 	}
 
-	ctx.Out("Initialized empty Jit repository in " + ctx.WorkspaceRoot())
+	ctx.Out("Initialized empty Jit repository in "+ctx.WorkspaceRoot(), none)
 
 	return 0
 

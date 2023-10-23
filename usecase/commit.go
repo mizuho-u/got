@@ -44,7 +44,7 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 		return 128
 	}
 
-	if err := ctx.Out(msg(parent, commitId, commitMessage)); err != nil {
+	if err := ctx.Out(msg(parent, commitId, commitMessage), none); err != nil {
 		return 128
 	}
 

@@ -4,6 +4,8 @@ import (
 	c "context"
 	"io"
 	"path/filepath"
+
+	"github.com/fatih/color"
 )
 
 type GotContext interface {
@@ -13,7 +15,7 @@ type GotContext interface {
 	Username() string
 	Email() string
 
-	Out(string) error
+	Out(string, Color) error
 	OutError(error) error
 }
 
@@ -25,6 +27,10 @@ type gotContext struct {
 	email         string
 	w             io.Writer
 	e             io.Writer
+}
+
+type ColorlizeWriter interface {
+	Write(p []byte, color Color) (n int, err error)
 }
 
 func NewContext(ctx c.Context, workspaceRoot, gotroot, username, email string, out io.Writer, err io.Writer) GotContext {
@@ -47,9 +53,24 @@ func (g *gotContext) Email() string {
 	return g.email
 }
 
-func (g *gotContext) Out(msg string) error {
+type Color string
 
-	_, err := g.w.Write([]byte(msg))
+const (
+	none  Color = ""
+	red   Color = "red"
+	green Color = "green"
+)
+
+func (g *gotContext) Out(msg string, c Color) (err error) {
+
+	switch c {
+	case red:
+		_, err = color.New(color.FgRed).Fprint(g.w, msg)
+	case green:
+		_, err = color.New(color.FgGreen).Fprint(g.w, msg)
+	default:
+		_, err = g.w.Write([]byte(msg))
+	}
 
 	return err
 }
