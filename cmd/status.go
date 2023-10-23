@@ -24,12 +24,16 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		workspace, _ := cmd.Flags().GetString("path")
+		porcelain, _ := cmd.Flags().GetBool("porcelain")
 
-		os.Exit(int(usecase.Status(mustNewContext(workspace, cmd))))
+		os.Exit(int(usecase.Status(mustNewContext(workspace, cmd), porcelain)))
 	},
 }
 
 func init() {
+
+	statusCmd.Flags().Bool("porcelain", false, "")
+
 	rootCmd.AddCommand(statusCmd)
 
 	// Here you will define your flags and configuration settings.

@@ -18,7 +18,7 @@ func TestStatus(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	out := &bytes.Buffer{}
-	if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+	if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
 		t.Fatal("expect exit code 0, got ", code)
 	}
 
@@ -48,7 +48,7 @@ func TestStatusIndex(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	out.Reset()
-	if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+	if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
 		t.Fatal("expect exit code 0, got ", code)
 	}
 
@@ -116,7 +116,7 @@ func TestStatusUntrackedDirectories(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+			if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
 				t.Error("expect exit code 0, got ", code)
 			}
 
@@ -218,7 +218,7 @@ func TestStatusChangedContents(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+			if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
 				t.Error("expect exit code 0, got ", code)
 			}
 
@@ -318,7 +318,106 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out)); code != 0 {
+			if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
+				t.Error("expect exit code 0, got ", code)
+			}
+
+			if out.String() != tc.expect {
+				t.Errorf("expect \n%s, got \n%s", tc.expect, out)
+			}
+
+		})
+
+	}
+
+}
+
+func TestStatusLongFormat(t *testing.T) {
+
+	testt := []struct {
+		description              string
+		newAddedFiles            map[string]string
+		newModifiedFiles         []string
+		newModifiedContentsFiles map[string]string
+		deleted                  []string
+		expect                   string
+	}{
+		{
+			description:   "reports a file added to a tracked directory",
+			newAddedFiles: map[string]string{"a/4.txt": "four"},
+			expect: `Changes to be commited:
+
+	new file: a/4.txt
+
+`,
+		},
+		{
+			description:   "prints files with changed contents",
+			newAddedFiles: map[string]string{"d/e/5.txt": "five"},
+			expect: `Changes to be commited:
+
+	new file: d/e/5.txt
+
+`,
+		},
+		{
+			description:      "reports modified modes",
+			newAddedFiles:    map[string]string{"a/5.txt": "aiueo"},
+			newModifiedFiles: []string{"1.txt"},
+			expect: `Changes to be commited:
+
+	modified: 1.txt
+	new file: a/5.txt
+
+`,
+		},
+	}
+
+	for _, tc := range testt {
+
+		t.Run(tc.description, func(t *testing.T) {
+
+			now := time.Now()
+
+			dir := initDir(t)
+
+			f1 := createFile(t, dir, "1.txt", []byte("one"))
+			modifyFileTime(t, dir, "1.txt", now, now)
+			add(t, dir, f1)
+
+			f2 := createFile(t, dir, "a/2.txt", []byte("two"))
+			modifyFileTime(t, dir, "a/2.txt", now, now)
+			add(t, dir, f2)
+
+			f3 := createFile(t, dir, "a/b/3.txt", []byte("three"))
+			modifyFileTime(t, dir, "a/b/3.txt", now, now)
+			add(t, dir, f3)
+
+			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+
+			for file, contents := range tc.newAddedFiles {
+				f := createFile(t, dir, file, []byte(contents))
+				add(t, dir, f)
+			}
+
+			for _, file := range tc.newModifiedFiles {
+				modifyFileMode(t, dir, file, 0755)
+				add(t, dir, filepath.Join(dir, file))
+			}
+
+			for file, contents := range tc.newModifiedContentsFiles {
+				f := createFile(t, dir, file, []byte(contents))
+				add(t, dir, f)
+			}
+
+			for _, path := range tc.deleted {
+				removeAll(t, dir, path)
+				removeAll(t, dir, ".git/index")
+				add(t, dir, dir)
+			}
+
+			out := &bytes.Buffer{}
+			if code := usecase.Status(newContext(dir, "", "", out, out), false); code != 0 {
 				t.Error("expect exit code 0, got ", code)
 			}
 

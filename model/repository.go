@@ -12,10 +12,12 @@ import (
 type repository struct {
 	objects          []object.Object
 	index            *index
-	workspaceScanner WorkspaceScanner
+	workspace        WorkspaceScanner
 	workspaceFiles   map[string]Entry
-	treeScanner      TreeScanner
-	changed          map[string]string
+	head             TreeScanner
+	changed          map[string]status
+	indexChanges     map[string]status
+	workspaceChanges map[string]status
 	untracked        []string
 }
 
@@ -39,7 +41,7 @@ func WithIndex(data io.Reader) WorkspaceOption {
 func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 
 	return func(w *repository) error {
-		w.workspaceScanner = scanner
+		w.workspace = scanner
 		return nil
 	}
 
@@ -48,7 +50,7 @@ func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 func WithTreeScanner(scanner TreeScanner) WorkspaceOption {
 
 	return func(w *repository) error {
-		w.treeScanner = scanner
+		w.head = scanner
 		return nil
 	}
 
@@ -60,7 +62,14 @@ func NewRepository(options ...WorkspaceOption) (*repository, error) {
 		return nil, err
 	}
 
-	ws := &repository{objects: []object.Object{}, index: index, changed: map[string]string{}, untracked: []string{}, workspaceFiles: map[string]Entry{}}
+	ws := &repository{
+		objects:          []object.Object{},
+		index:            index,
+		changed:          map[string]status{},
+		indexChanges:     map[string]status{},
+		workspaceChanges: map[string]status{},
+		untracked:        []string{},
+		workspaceFiles:   map[string]Entry{}}
 
 	for _, opt := range options {
 		if err := opt(ws); err != nil {
@@ -82,7 +91,7 @@ func (repo *repository) Untracked() []string {
 	return repo.untracked
 }
 
-func (repo *repository) Changed() ([]string, map[string]string) {
+func (repo *repository) Changed() ([]string, map[string]status) {
 
 	files := internal.Keys(repo.changed)
 
@@ -91,6 +100,28 @@ func (repo *repository) Changed() ([]string, map[string]string) {
 	})
 
 	return files, repo.changed
+}
+
+func (repo *repository) IndexChanges() ([]string, map[string]status) {
+
+	files := internal.Keys(repo.indexChanges)
+
+	sort.SliceStable(files, func(i, j int) bool {
+		return files[i] < files[j]
+	})
+
+	return files, repo.indexChanges
+}
+
+func (repo *repository) WorkspaceChanges() ([]string, map[string]status) {
+
+	files := internal.Keys(repo.workspaceChanges)
+
+	sort.SliceStable(files, func(i, j int) bool {
+		return files[i] < files[j]
+	})
+
+	return files, repo.workspaceChanges
 }
 
 func (repo *repository) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
@@ -175,7 +206,7 @@ func (repo *repository) scan() error {
 
 	for {
 
-		p, err := repo.workspaceScanner.Next()
+		p, err := repo.workspace.Next()
 		if err != nil {
 			return err
 		}
@@ -210,54 +241,73 @@ func (repo *repository) scan() error {
 }
 
 const (
-	statusNone         string = " "
-	statusIndexAdded   string = "A"
-	statusFileDeleted  string = "D"
-	statusFileModified string = "M"
-	statusUnchanged    string = statusNone + statusNone
+	statusNone         status = " "
+	statusIndexAdded   status = "A"
+	statusFileDeleted  status = "D"
+	statusFileModified status = "M"
+	statusUnchanged    status = statusNone + statusNone
 )
+
+type status string
+
+func (s status) ShortFormat() string {
+	return string(s)
+}
+
+func (s status) LongFormat() string {
+	switch s {
+	case statusIndexAdded:
+		return "new file"
+	case statusFileDeleted:
+		return "deleted"
+	case statusFileModified:
+		return "modified"
+	default:
+		return ""
+	}
+}
 
 func (repo *repository) detectChanges() {
 
 	head := map[string]object.Entry{}
 
-	if repo.treeScanner != nil {
+	repo.head.Walk(func(name string, entry object.Entry) {
 
-		repo.treeScanner.Walk(func(name string, entry object.Entry) {
-			if entry.IsTree() {
-				return
-			}
+		if entry.IsTree() {
+			return
+		}
 
-			if !repo.index.trackedFile(name) {
-				repo.changed[name] = statusFileDeleted + statusNone
-				return
-			}
+		if !repo.index.trackedFile(name) {
+			repo.changed[name] = statusFileDeleted + statusNone
+			repo.indexChanges[name] = statusFileDeleted
+			return
+		}
 
-			head[name] = entry
+		head[name] = entry
 
-		})
-	}
+	})
 
 	for _, e := range repo.index.entries {
 
-		status := ""
-
+		indexStatus := statusNone
 		if h, ok := head[e.filename]; !ok {
-			status = statusIndexAdded
+			indexStatus = statusIndexAdded
+			repo.indexChanges[e.filename] = indexStatus
 		} else if e.oid != h.OID() || e.permission() != h.Permission() {
-			status = statusFileModified
-		} else {
-			status = statusNone
+			indexStatus = statusFileModified
+			repo.indexChanges[e.filename] = indexStatus
 		}
 
+		workspaceStatus := statusNone
 		if stat, ok := repo.workspaceFiles[e.filename]; !ok {
-			status += statusFileDeleted
+			workspaceStatus = statusFileDeleted
+			repo.workspaceChanges[e.filename] = workspaceStatus
 		} else if !repo.index.match(stat) {
-			status += statusFileModified
-		} else {
-			status += statusNone
+			workspaceStatus = statusFileModified
+			repo.workspaceChanges[e.filename] = workspaceStatus
 		}
 
+		status := indexStatus + workspaceStatus
 		if status == statusUnchanged {
 			continue
 		}

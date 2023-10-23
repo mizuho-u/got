@@ -8,7 +8,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Status(ctx GotContext) ExitCode {
+func Status(ctx GotContext, porcelain bool) ExitCode {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
@@ -45,13 +45,62 @@ func Status(ctx GotContext) ExitCode {
 		return 128
 	}
 
-	files, types := repo.Changed()
-	for _, f := range files {
-		ctx.Out(fmt.Sprintf("%s %s\n", types[f], f))
-	}
+	if porcelain {
+		files, types := repo.Changed()
+		for _, f := range files {
+			ctx.Out(fmt.Sprintf("%s %s\n", types[f].ShortFormat(), f))
+		}
 
-	for _, v := range repo.Untracked() {
-		ctx.Out(fmt.Sprintf("?? %s\n", v))
+		for _, v := range repo.Untracked() {
+			ctx.Out(fmt.Sprintf("?? %s\n", v))
+		}
+	} else {
+
+		indexChanges := false
+		if files, types := repo.IndexChanges(); len(files) != 0 {
+			ctx.Out("Changes to be commited:\n\n")
+			for _, f := range files {
+				ctx.Out(fmt.Sprintf("\t%8s: %s\n", types[f].LongFormat(), f))
+			}
+			ctx.Out("\n")
+
+			indexChanges = true
+		}
+
+		workspaceChanges := false
+		if files, types := repo.WorkspaceChanges(); len(files) != 0 {
+			ctx.Out("Changes not staged for commit:\n\n")
+			for _, f := range files {
+				ctx.Out(fmt.Sprintf("\t%8s: %s\n", types[f].LongFormat(), f))
+			}
+			ctx.Out("\n")
+
+			workspaceChanges = true
+		}
+
+		untrackedFiles := false
+		if files := repo.Untracked(); len(files) != 0 {
+			ctx.Out("Untracked files:\n\n")
+			for _, f := range files {
+				ctx.Out(fmt.Sprintf("\t%-8s\n", f))
+			}
+			ctx.Out("\n")
+
+			untrackedFiles = true
+		}
+
+		if !indexChanges {
+
+			if workspaceChanges {
+				ctx.Out("no changes added to commit")
+			} else if untrackedFiles {
+				ctx.Out("nothing added to commit but untracked files present")
+			} else {
+				ctx.Out("nothing to commit, working tree clean")
+			}
+
+		}
+
 	}
 
 	if err := db.Index().Update(repo.Index()); err != nil {

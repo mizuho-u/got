@@ -62,7 +62,7 @@ func TestStatus(t *testing.T) {
 
 			}
 
-			out := executeCmd(t, build+" -C "+dir+" status")
+			out := executeCmd(t, build+" -C "+dir+" status --porcelain")
 
 			if out != tc.expect {
 				t.Errorf("expect \n%s, got \n%s", tc.expect, out)
@@ -85,21 +85,21 @@ func TestStatusModifiedFiles(t *testing.T) {
 	executeCmd(t, `echo "commit" | `+build+" -C "+dir+" commit")
 
 	// commit直後は差分なし
-	out := executeCmd(t, build+" -C "+dir+" status")
+	out := executeCmd(t, build+" -C "+dir+" status --porcelain")
 	if out != "" {
 		t.Errorf("expect empty, but %s", out)
 	}
 
 	// ファイルに変更を加えると、indexとworkspaceに差が出る
 	f = createFile(t, dir, "a.txt", []byte("hello, world"))
-	out = executeCmd(t, build+" -C "+dir+" status")
+	out = executeCmd(t, build+" -C "+dir+" status --porcelain")
 	if out != " M a.txt\n" {
 		t.Errorf("expect \" M a.txt\", but %s", out)
 	}
 
 	// indexに変更を加えると、indexとheadに差が出る
 	executeCmd(t, build+" -C "+dir+" add "+f)
-	out = executeCmd(t, build+" -C "+dir+" status")
+	out = executeCmd(t, build+" -C "+dir+" status --porcelain")
 	if out != "M  a.txt\n" {
 		t.Errorf("expect \"M  a.txt\", but %s", out)
 	}
@@ -117,7 +117,7 @@ func TestStatusDeletedFiles(t *testing.T) {
 	executeCmd(t, `echo "commit" | `+build+" -C "+dir+" commit")
 
 	// commit直後は差分なし
-	out := executeCmd(t, build+" -C "+dir+" status")
+	out := executeCmd(t, build+" -C "+dir+" status --porcelain")
 	if out != "" {
 		t.Errorf("expect empty, but %s", out)
 	}
@@ -132,7 +132,7 @@ func TestStatusDeletedFiles(t *testing.T) {
 	f = createFile(t, dir, "a/b.txt", []byte("hello, world"))
 	executeCmd(t, build+" -C "+dir+" add "+f)
 
-	out = executeCmd(t, build+" -C "+dir+" status")
+	out = executeCmd(t, build+" -C "+dir+" status --porcelain")
 	if out != "D  a\nA  a/b.txt\n" {
 		t.Errorf("expect \"D  a\", but %s", out)
 	}
