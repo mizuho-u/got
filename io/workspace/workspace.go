@@ -95,7 +95,7 @@ func (fs *fileScanner) enqueueFile(dir string, info fs.FileInfo) error {
 		return err
 	}
 
-	fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), Reader: reader})
+	fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), ReadSeeker: reader})
 
 	return nil
 }
@@ -104,7 +104,7 @@ type file struct {
 	name  string
 	size  int64
 	stats *model.FileStat
-	io.Reader
+	io.ReadSeeker
 }
 
 func (f *file) Name() string {

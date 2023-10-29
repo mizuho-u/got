@@ -15,7 +15,7 @@ type Entry interface {
 	Size() int64
 	Parents() []string
 	Stats() *FileStat
-	io.Reader
+	io.ReadSeeker
 }
 
 type TreeScanner interface {

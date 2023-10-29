@@ -395,12 +395,7 @@ func (ie *indexEntry) serialize() []byte {
 }
 
 func (ie *indexEntry) permission() object.Permission {
-
-	if (ie.stat.mode & 0111) == 0111 {
-		return object.ExecutableFile
-	}
-
-	return object.RegularFile
+	return ie.stat.permission()
 }
 
 func (ie *indexEntry) matchTimes(stat *FileStat) bool {

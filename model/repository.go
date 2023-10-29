@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -186,6 +188,158 @@ func (repo *repository) Add(scanner WorkspaceScanner) ([]object.Object, error) {
 
 	}
 
+}
+
+const (
+	nullPath string = "/dev/null"
+	nullOID  string = "0000000000000000000000000000000000000000"
+)
+
+type diff interface {
+	PathLine() string
+	ModeLine() string
+	IndexLine() string
+	FileLine() string
+}
+
+type diffModified struct {
+	AOID  string
+	AMode string
+	APath string
+	BOID  string
+	BMode string
+	BPath string
+}
+
+func (diff *diffModified) PathLine() string {
+	return fmt.Sprintf("diff --git %s %s\n", diff.APath, diff.BPath)
+}
+
+func (diff *diffModified) ModeLine() string {
+
+	l := ""
+
+	if diff.AMode != diff.BMode {
+		l += fmt.Sprintf("old mode %s\n", diff.AMode)
+		l += fmt.Sprintf("new mode %s\n", diff.BMode)
+	}
+
+	return l
+}
+
+func (diff *diffModified) IndexLine() string {
+
+	if diff.AOID == diff.BOID {
+		return ""
+	}
+
+	if diff.AMode != diff.BMode {
+		return fmt.Sprintf("index %s..%s\n", diff.AOID, diff.BOID)
+	}
+
+	return fmt.Sprintf("index %s..%s %s\n", diff.AOID, diff.BOID, diff.AMode)
+}
+
+func (diff *diffModified) FileLine() string {
+
+	if diff.AOID == diff.BOID {
+		return ""
+	}
+
+	l := fmt.Sprintf("--- %s\n", diff.APath)
+	l += fmt.Sprintf("+++ %s\n", diff.BPath)
+
+	return l
+
+}
+
+type diffDeleted struct {
+	AOID  string
+	AMode string
+	APath string
+	BOID  string
+	BMode string
+	BPath string
+}
+
+func (diff *diffDeleted) PathLine() string {
+	return fmt.Sprintf("diff --git %s %s\n", diff.APath, diff.BPath)
+}
+
+func (diff *diffDeleted) ModeLine() string {
+	return fmt.Sprintf("deleted file mode %s\n", diff.AMode)
+}
+
+func (diff *diffDeleted) IndexLine() string {
+	return fmt.Sprintf("index %s..%s\n", diff.AOID, diff.BOID)
+}
+
+func (diff *diffDeleted) FileLine() string {
+
+	l := fmt.Sprintf("--- %s\n", diff.APath)
+	l += fmt.Sprintf("+++ %s\n", nullPath)
+
+	return l
+
+}
+func (repo *repository) DiffUnstagedChanges() ([]diff, error) {
+
+	diffs := []diff{}
+
+	files, types := repo.WorkspaceChanges()
+
+	for _, path := range files {
+
+		var d diff
+
+		switch types[path] {
+		case statusFileDeleted:
+
+			deleted := &diffDeleted{}
+
+			deleted.AOID = object.ShortOID(repo.index.entries[path].oid)
+			deleted.AMode = string(repo.index.entries[path].permission())
+			deleted.APath = filepath.Join("a", path)
+
+			deleted.BOID = object.ShortOID(nullOID)
+			deleted.BPath = filepath.Join("b", path)
+
+			d = deleted
+
+		case statusFileModified:
+
+			modified := &diffModified{}
+
+			modified.AOID = object.ShortOID(repo.index.entries[path].oid)
+			modified.AMode = string(repo.index.entries[path].permission())
+			modified.APath = filepath.Join("a", path)
+
+			f := repo.workspaceFiles[path]
+
+			f.Seek(0, io.SeekStart)
+			data, err := io.ReadAll(f)
+			if err != nil {
+				return diffs, err
+			}
+
+			blob, err := object.NewBlob(path, data)
+			if err != nil {
+				return diffs, err
+			}
+
+			modified.BOID = object.ShortOID(blob.OID())
+			modified.BMode = string(f.Stats().permission())
+			modified.BPath = filepath.Join("b", path)
+
+			d = modified
+
+		}
+
+		diffs = append(diffs, d)
+
+	}
+
+	return diffs, nil
 }
 
 func (repo *repository) Scan() error {

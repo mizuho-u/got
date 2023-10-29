@@ -103,3 +103,7 @@ func (o *object) Content() []byte {
 func (o *object) Class() class {
 	return o.class
 }
+
+func ShortOID(oid string) string {
+	return oid[0:7]
+}

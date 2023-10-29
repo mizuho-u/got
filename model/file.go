@@ -5,6 +5,7 @@ import (
 	"syscall"
 
 	"github.com/mizuho-u/got/model/internal"
+	"github.com/mizuho-u/got/model/object"
 )
 
 type File struct {
@@ -44,5 +45,15 @@ func NewFileStat(stat *syscall.Stat_t) *FileStat {
 		gid:        uint32(stat.Gid),
 		size:       uint32(stat.Size),
 	}
+
+}
+
+func (s *FileStat) permission() object.Permission {
+
+	if (s.mode & 0111) == 0111 {
+		return object.ExecutableFile
+	}
+
+	return object.RegularFile
 
 }
