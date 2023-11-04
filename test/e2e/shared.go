@@ -2,10 +2,12 @@ package e2e
 
 import (
 	"flag"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var bin = flag.String("build", "", "the build path")
@@ -89,4 +91,24 @@ func executeCmd(t *testing.T, cmd string) string {
 	}
 
 	return string(out)
+}
+
+func modifyFileMode(t testing.TB, dir, name string, mode fs.FileMode) {
+
+	t.Helper()
+
+	if err := os.Chmod(filepath.Join(dir, name), mode); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func modifyFileTime(t testing.TB, dir, name string, atime, mtime time.Time) {
+
+	t.Helper()
+
+	if err := os.Chtimes(filepath.Join(dir, name), atime, mtime); err != nil {
+		t.Fatal(err)
+	}
+
 }

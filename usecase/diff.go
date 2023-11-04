@@ -6,7 +6,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Diff(ctx GotContext, porcelain bool) ExitCode {
+func Diff(ctx GotContext, staged bool) ExitCode {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
@@ -43,7 +43,7 @@ func Diff(ctx GotContext, porcelain bool) ExitCode {
 		return 128
 	}
 
-	diffs, err := repo.DiffUnstagedChanges()
+	diffs, err := repo.Diff(staged)
 	if err != nil {
 		return 128
 	}

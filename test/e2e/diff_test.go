@@ -1,15 +1,14 @@
-package usecase_test
+package e2e
 
 import (
-	"bytes"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/mizuho-u/got/usecase"
 )
 
 func TestDiff(t *testing.T) {
+
+	build := buildpath(t)
 
 	testt := []struct {
 		description              string
@@ -65,21 +64,21 @@ index 43dd47e..0000000
 
 			now := time.Now()
 
-			dir := initDir(t)
+			dir := initDir(t, build)
 
 			f1 := createFile(t, dir, "1.txt", []byte("one"))
 			modifyFileTime(t, dir, "1.txt", now, now)
-			add(t, dir, f1)
+			executeCmd(t, build+" -C "+dir+" add "+f1)
 
 			f2 := createFile(t, dir, "a/2.txt", []byte("two"))
 			modifyFileTime(t, dir, "a/2.txt", now, now)
-			add(t, dir, f2)
+			executeCmd(t, build+" -C "+dir+" add "+f2)
 
 			f3 := createFile(t, dir, "a/b/3.txt", []byte("three"))
 			modifyFileTime(t, dir, "a/b/3.txt", now, now)
-			add(t, dir, f3)
+			executeCmd(t, build+" -C "+dir+" add "+f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			executeCmd(t, `echo "commit" | `+build+" -C "+dir+" commit")
 
 			for _, file := range tc.newModifiedFiles {
 				modifyFileMode(t, dir, file, 0755)
@@ -93,12 +92,8 @@ index 43dd47e..0000000
 				removeAll(t, dir, name)
 			}
 
-			out := &bytes.Buffer{}
-			if code := usecase.Diff(newContext(dir, "", "", out, out), false); code != 0 {
-				t.Error("expect exit code 0, got ", code)
-			}
-
-			if out.String() != tc.expect {
+			out := executeCmd(t, ``+build+" -C "+dir+" diff")
+			if out != tc.expect {
 				t.Errorf("expect \n%s, got \n%s", tc.expect, out)
 			}
 
@@ -109,6 +104,8 @@ index 43dd47e..0000000
 }
 
 func TestDiffCached(t *testing.T) {
+
+	build := buildpath(t)
 
 	testt := []struct {
 		description              string
@@ -155,49 +152,45 @@ index 43dd47e..0000000
 
 			now := time.Now()
 
-			dir := initDir(t)
+			dir := initDir(t, build)
 
 			f1 := createFile(t, dir, "1.txt", []byte("one"))
 			modifyFileTime(t, dir, "1.txt", now, now)
-			add(t, dir, f1)
+			executeCmd(t, build+" -C "+dir+" add "+f1)
 
 			f2 := createFile(t, dir, "a/2.txt", []byte("two"))
 			modifyFileTime(t, dir, "a/2.txt", now, now)
-			add(t, dir, f2)
+			executeCmd(t, build+" -C "+dir+" add "+f2)
 
 			f3 := createFile(t, dir, "a/b/3.txt", []byte("three"))
 			modifyFileTime(t, dir, "a/b/3.txt", now, now)
-			add(t, dir, f3)
+			executeCmd(t, build+" -C "+dir+" add "+f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			executeCmd(t, `echo "commit" | `+build+" -C "+dir+" commit")
 
 			for file, contents := range tc.newAddedFiles {
 				f := createFile(t, dir, file, []byte(contents))
-				add(t, dir, f)
+				executeCmd(t, build+" -C "+dir+" add "+f)
 			}
 
 			for _, file := range tc.newModifiedFiles {
 				modifyFileMode(t, dir, file, 0755)
-				add(t, dir, filepath.Join(dir, file))
+				executeCmd(t, build+" -C "+dir+" add "+filepath.Join(dir, file))
 			}
 
 			for file, contents := range tc.newModifiedContentsFiles {
 				f := createFile(t, dir, file, []byte(contents))
-				add(t, dir, f)
+				executeCmd(t, build+" -C "+dir+" add "+f)
 			}
 
 			for _, path := range tc.deleted {
 				removeAll(t, dir, path)
 				removeAll(t, dir, ".git/index")
-				add(t, dir, dir)
+				executeCmd(t, build+" -C "+dir+" add "+dir)
 			}
 
-			out := &bytes.Buffer{}
-			if code := usecase.Diff(newContext(dir, "", "", out, out), true); code != 0 {
-				t.Error("expect exit code 0, got ", code)
-			}
-
-			if out.String() != tc.expect {
+			out := executeCmd(t, ``+build+" -C "+dir+" diff --cached")
+			if out != tc.expect {
 				t.Errorf("expect \n%s, got \n%s", tc.expect, out)
 			}
 

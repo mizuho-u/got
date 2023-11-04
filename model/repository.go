@@ -16,7 +16,8 @@ type repository struct {
 	index            *index
 	workspace        WorkspaceScanner
 	workspaceFiles   map[string]Entry
-	head             TreeScanner
+	headScanner      TreeScanner
+	head             map[string]object.Entry
 	changed          map[string]status
 	indexChanges     map[string]status
 	workspaceChanges map[string]status
@@ -52,7 +53,7 @@ func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
 func WithTreeScanner(scanner TreeScanner) WorkspaceOption {
 
 	return func(w *repository) error {
-		w.head = scanner
+		w.headScanner = scanner
 		return nil
 	}
 
@@ -70,6 +71,7 @@ func NewRepository(options ...WorkspaceOption) (*repository, error) {
 		changed:          map[string]status{},
 		indexChanges:     map[string]status{},
 		workspaceChanges: map[string]status{},
+		head:             map[string]object.Entry{},
 		untracked:        []string{},
 		workspaceFiles:   map[string]Entry{}}
 
@@ -282,7 +284,42 @@ func (diff *diffDeleted) FileLine() string {
 	return l
 
 }
-func (repo *repository) DiffUnstagedChanges() ([]diff, error) {
+
+type diffAdded struct {
+	AOID  string
+	AMode string
+	APath string
+	BOID  string
+	BMode string
+	BPath string
+}
+
+func (diff *diffAdded) PathLine() string {
+	return fmt.Sprintf("diff --git %s %s\n", diff.APath, diff.BPath)
+}
+
+func (diff *diffAdded) ModeLine() string {
+	return fmt.Sprintf("new file mode %s\n", diff.BMode)
+}
+
+func (diff *diffAdded) IndexLine() string {
+	return fmt.Sprintf("index %s..%s\n", diff.AOID, diff.BOID)
+}
+
+func (diff *diffAdded) FileLine() string {
+
+	l := fmt.Sprintf("--- %s\n", nullPath)
+	l += fmt.Sprintf("+++ %s\n", diff.BPath)
+
+	return l
+
+}
+
+func (repo *repository) Diff(staged bool) ([]diff, error) {
+
+	if staged {
+		return repo.diffStaged()
+	}
 
 	diffs := []diff{}
 
@@ -332,6 +369,68 @@ func (repo *repository) DiffUnstagedChanges() ([]diff, error) {
 			modified.BPath = filepath.Join("b", path)
 
 			d = modified
+
+		}
+
+		diffs = append(diffs, d)
+
+	}
+
+	return diffs, nil
+}
+
+func (repo *repository) diffStaged() ([]diff, error) {
+
+	diffs := []diff{}
+
+	files, types := repo.IndexChanges()
+
+	for _, path := range files {
+
+		var d diff
+
+		switch types[path] {
+		case statusFileModified:
+
+			modified := &diffModified{}
+
+			f := repo.head[path]
+
+			modified.AOID = object.ShortOID(f.OID())
+			modified.AMode = string(f.Permission())
+			modified.APath = filepath.Join("b", path)
+
+			modified.BOID = object.ShortOID(repo.index.entries[path].oid)
+			modified.BMode = string(repo.index.entries[path].permission())
+			modified.BPath = filepath.Join("a", path)
+
+			d = modified
+
+		case statusFileDeleted:
+
+			deleted := &diffDeleted{}
+
+			deleted.AOID = object.ShortOID(repo.head[path].OID())
+			deleted.AMode = string(repo.head[path].Permission())
+			deleted.APath = filepath.Join("a", path)
+
+			deleted.BOID = object.ShortOID(nullOID)
+			deleted.BPath = filepath.Join("b", path)
+
+			d = deleted
+
+		case statusIndexAdded:
+
+			added := &diffAdded{}
+
+			added.AOID = object.ShortOID(nullOID)
+			added.APath = filepath.Join("a", path)
+
+			added.BOID = object.ShortOID(repo.index.entries[path].oid)
+			added.BMode = string(repo.index.entries[path].permission())
+			added.BPath = filepath.Join("b", path)
+
+			d = added
 
 		}
 
@@ -423,13 +522,13 @@ func (s status) LongFormat() string {
 
 func (repo *repository) detectChanges() {
 
-	head := map[string]object.Entry{}
-
-	repo.head.Walk(func(name string, entry object.Entry) {
+	repo.headScanner.Walk(func(name string, entry object.Entry) {
 
 		if entry.IsTree() {
 			return
 		}
+
+		repo.head[name] = entry
 
 		if !repo.index.trackedFile(name) {
 			repo.changed[name] = statusFileDeleted + statusNone
@@ -437,14 +536,12 @@ func (repo *repository) detectChanges() {
 			return
 		}
 
-		head[name] = entry
-
 	})
 
 	for _, e := range repo.index.entries {
 
 		indexStatus := statusNone
-		if h, ok := head[e.filename]; !ok {
+		if h, ok := repo.head[e.filename]; !ok {
 			indexStatus = statusIndexAdded
 			repo.indexChanges[e.filename] = indexStatus
 		} else if e.oid != h.OID() || e.permission() != h.Permission() {
