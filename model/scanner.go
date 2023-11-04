@@ -7,10 +7,10 @@ import (
 )
 
 type WorkspaceScanner interface {
-	Next() (Entry, error)
+	Next() (WorkspaceEntry, error)
 }
 
-type Entry interface {
+type WorkspaceEntry interface {
 	Name() string
 	Size() int64
 	Parents() []string

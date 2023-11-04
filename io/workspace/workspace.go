@@ -40,7 +40,7 @@ func Scan(rootDir, name, ignore string) (*fileScanner, error) {
 }
 
 // Next エントリをひとつ返す。最後はnil
-func (fs *fileScanner) Next() (model.Entry, error) {
+func (fs *fileScanner) Next() (model.WorkspaceEntry, error) {
 
 	if f, err := fs.files.Dequeue(); err == nil {
 		return f, nil

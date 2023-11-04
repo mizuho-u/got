@@ -15,7 +15,7 @@ type repository struct {
 	objects          []object.Object
 	index            *index
 	workspace        WorkspaceScanner
-	workspaceFiles   map[string]Entry
+	workspaceFiles   map[string]WorkspaceEntry
 	headScanner      TreeScanner
 	head             map[string]object.Entry
 	changed          map[string]status
@@ -73,7 +73,7 @@ func NewRepository(options ...WorkspaceOption) (*repository, error) {
 		workspaceChanges: map[string]status{},
 		head:             map[string]object.Entry{},
 		untracked:        []string{},
-		workspaceFiles:   map[string]Entry{}}
+		workspaceFiles:   map[string]WorkspaceEntry{}}
 
 	for _, opt := range options {
 		if err := opt(ws); err != nil {

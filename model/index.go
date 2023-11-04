@@ -19,7 +19,7 @@ const (
 type Index interface {
 	Serialize() ([]byte, error)
 	tracked(name string) bool
-	match(e Entry) bool
+	match(e WorkspaceEntry) bool
 }
 
 type index struct {
@@ -257,7 +257,7 @@ func (i *index) trackedFile(name string) bool {
 	return inEntries
 }
 
-func (i *index) match(e Entry) bool {
+func (i *index) match(e WorkspaceEntry) bool {
 
 	entry, inEntries := i.entries[e.Name()]
 	if !inEntries {
