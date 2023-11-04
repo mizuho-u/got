@@ -14,9 +14,7 @@ import (
 type repository struct {
 	objects          []object.Object
 	index            *index
-	workspace        WorkspaceScanner
-	workspaceFiles   map[string]WorkspaceEntry
-	headScanner      TreeScanner
+	workspace        map[string]WorkspaceEntry
 	head             map[string]object.Entry
 	changed          map[string]status
 	indexChanges     map[string]status
@@ -41,23 +39,6 @@ func WithIndex(data io.Reader) WorkspaceOption {
 
 }
 
-func WithWorkspaceScanner(scanner WorkspaceScanner) WorkspaceOption {
-
-	return func(w *repository) error {
-		w.workspace = scanner
-		return nil
-	}
-
-}
-
-func WithTreeScanner(scanner TreeScanner) WorkspaceOption {
-
-	return func(w *repository) error {
-		w.headScanner = scanner
-		return nil
-	}
-
-}
 func NewRepository(options ...WorkspaceOption) (*repository, error) {
 
 	index, err := newIndex()
@@ -73,7 +54,7 @@ func NewRepository(options ...WorkspaceOption) (*repository, error) {
 		workspaceChanges: map[string]status{},
 		head:             map[string]object.Entry{},
 		untracked:        []string{},
-		workspaceFiles:   map[string]WorkspaceEntry{}}
+		workspace:        map[string]WorkspaceEntry{}}
 
 	for _, opt := range options {
 		if err := opt(ws); err != nil {
@@ -351,7 +332,7 @@ func (repo *repository) Diff(staged bool) ([]diff, error) {
 			modified.AMode = string(repo.index.entries[path].permission())
 			modified.APath = filepath.Join("a", path)
 
-			f := repo.workspaceFiles[path]
+			f := repo.workspace[path]
 
 			f.Seek(0, io.SeekStart)
 			data, err := io.ReadAll(f)
@@ -441,25 +422,25 @@ func (repo *repository) diffStaged() ([]diff, error) {
 	return diffs, nil
 }
 
-func (repo *repository) Scan() error {
+func (repo *repository) Scan(workspaceScanner WorkspaceScanner, treeScanner TreeScanner) error {
 
-	if err := repo.scan(); err != nil {
+	if err := repo.scan(workspaceScanner); err != nil {
 		return err
 	}
 
-	repo.detectChanges()
+	repo.detectChanges(treeScanner)
 
 	return nil
 
 }
 
-func (repo *repository) scan() error {
+func (repo *repository) scan(workspaceScanner WorkspaceScanner) error {
 
 	untrackedSet := map[string]struct{}{}
 
 	for {
 
-		p, err := repo.workspace.Next()
+		p, err := workspaceScanner.Next()
 		if err != nil {
 			return err
 		}
@@ -468,7 +449,7 @@ func (repo *repository) scan() error {
 			break
 		}
 
-		repo.workspaceFiles[p.Name()] = p
+		repo.workspace[p.Name()] = p
 
 		if repo.Index().tracked(p.Name()) {
 			continue
@@ -520,9 +501,9 @@ func (s status) LongFormat() string {
 	}
 }
 
-func (repo *repository) detectChanges() {
+func (repo *repository) detectChanges(headScanner TreeScanner) {
 
-	repo.headScanner.Walk(func(name string, entry object.Entry) {
+	headScanner.Walk(func(name string, entry object.Entry) {
 
 		if entry.IsTree() {
 			return
@@ -550,7 +531,7 @@ func (repo *repository) detectChanges() {
 		}
 
 		workspaceStatus := statusNone
-		if stat, ok := repo.workspaceFiles[e.filename]; !ok {
+		if stat, ok := repo.workspace[e.filename]; !ok {
 			workspaceStatus = statusFileDeleted
 			repo.workspaceChanges[e.filename] = workspaceStatus
 		} else if !repo.index.match(stat) {

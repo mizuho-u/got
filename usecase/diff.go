@@ -20,18 +20,6 @@ func Diff(ctx GotContext, staged bool) ExitCode {
 	if !db.Index().IsNew() {
 		opt = append(opt, model.WithIndex(db.Index()))
 	}
-	scanner, err := workspace.Scan(ctx.WorkspaceRoot(), ctx.WorkspaceRoot(), ctx.GotRoot())
-	if err != nil {
-		ctx.OutError(err)
-		return 128
-	}
-	opt = append(opt, model.WithWorkspaceScanner(scanner))
-
-	head, err := db.Refs().Head()
-	if err != nil {
-		return 128
-	}
-	opt = append(opt, model.WithTreeScanner(db.Objects().ScanTree(head.Tree())))
 
 	repo, err := model.NewRepository(opt...)
 	if err != nil {
@@ -39,7 +27,17 @@ func Diff(ctx GotContext, staged bool) ExitCode {
 		return 128
 	}
 
-	if repo.Scan() != nil {
+	scanner, err := workspace.Scan(ctx.WorkspaceRoot(), ctx.WorkspaceRoot(), ctx.GotRoot())
+	if err != nil {
+		ctx.OutError(err)
+		return 128
+	}
+	head, err := db.Refs().Head()
+	if err != nil {
+		return 128
+	}
+
+	if repo.Scan(scanner, db.Objects().ScanTree(head.Tree())) != nil {
 		return 128
 	}
 
