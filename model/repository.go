@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -12,10 +13,10 @@ import (
 )
 
 type repository struct {
-	objects          []object.Object
 	index            *index
+	object           ObjectLoader
 	workspace        map[string]WorkspaceEntry
-	head             map[string]object.Entry
+	head             map[string]TreeEntry
 	changed          map[string]status
 	indexChanges     map[string]status
 	workspaceChanges map[string]status
@@ -39,6 +40,15 @@ func WithIndex(data io.Reader) WorkspaceOption {
 
 }
 
+func WithObjectLoader(l ObjectLoader) WorkspaceOption {
+
+	return func(r *repository) error {
+		r.object = l
+		return nil
+	}
+
+}
+
 func NewRepository(options ...WorkspaceOption) (*repository, error) {
 
 	index, err := newIndex()
@@ -47,12 +57,11 @@ func NewRepository(options ...WorkspaceOption) (*repository, error) {
 	}
 
 	ws := &repository{
-		objects:          []object.Object{},
 		index:            index,
 		changed:          map[string]status{},
 		indexChanges:     map[string]status{},
 		workspaceChanges: map[string]status{},
-		head:             map[string]object.Entry{},
+		head:             map[string]TreeEntry{},
 		untracked:        []string{},
 		workspace:        map[string]WorkspaceEntry{}}
 
@@ -109,9 +118,9 @@ func (repo *repository) WorkspaceChanges() ([]string, map[string]status) {
 	return files, repo.workspaceChanges
 }
 
-func (repo *repository) Commit(parent, author, email, message string, now time.Time) (commitId string, err error) {
+func (repo *repository) Commit(parent, author, email, message string, now time.Time) (commitId string, objects []object.Object, err error) {
 
-	entries := []object.Entry{}
+	entries := []object.TreeEntry{}
 
 	for _, entry := range repo.index.entries {
 		entries = append(entries, object.NewTreeEntry(entry.filename, entry.permission(), entry.oid))
@@ -119,12 +128,12 @@ func (repo *repository) Commit(parent, author, email, message string, now time.T
 
 	root, err := object.BuildTree(entries)
 	if err != nil {
-		return commitId, err
+		return commitId, objects, err
 	}
 
 	root.Walk(func(tree object.Object) error {
 
-		repo.objects = append(repo.objects, tree)
+		objects = append(objects, tree)
 		return nil
 
 	})
@@ -132,19 +141,17 @@ func (repo *repository) Commit(parent, author, email, message string, now time.T
 	a := object.NewAuthor(author, email, now)
 	commit, err := object.NewCommit(parent, root.OID(), a.String(), message)
 	if err != nil {
-		return commitId, err
+		return commitId, objects, err
 	}
-	repo.objects = append(repo.objects, commit)
+	objects = append(objects, commit)
 
 	commitId = commit.OID()
 
-	return commitId, err
+	return commitId, objects, err
 
 }
 
-func (repo *repository) Add(scanner WorkspaceScanner) ([]object.Object, error) {
-
-	objects := []object.Object{}
+func (repo *repository) Add(scanner WorkspaceScanner) (objects []object.Object, err error) {
 
 	for {
 
@@ -165,7 +172,7 @@ func (repo *repository) Add(scanner WorkspaceScanner) ([]object.Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		repo.objects = append(repo.objects, blob)
+		objects = append(objects, blob)
 
 		repo.index.add(NewIndexEntry(f.Name(), blob.OID(), f.Stats()))
 
@@ -174,8 +181,9 @@ func (repo *repository) Add(scanner WorkspaceScanner) ([]object.Object, error) {
 }
 
 const (
-	nullPath string = "/dev/null"
-	nullOID  string = "0000000000000000000000000000000000000000"
+	nullPath     string = "/dev/null"
+	nullOID      string = "0000000000000000000000000000000000000000"
+	nullContents string = ""
 )
 
 type diff interface {
@@ -189,13 +197,15 @@ type diffModified struct {
 	AOID  string
 	AMode string
 	APath string
+	AData []byte
 	BOID  string
 	BMode string
 	BPath string
+	BData []byte
 }
 
 func (diff *diffModified) PathLine() string {
-	return fmt.Sprintf("diff --git %s %s\n", diff.APath, diff.BPath)
+	return fmt.Sprintf("diff --git %s %s\n", filepath.Join("a", diff.APath), filepath.Join("b", diff.BPath))
 }
 
 func (diff *diffModified) ModeLine() string {
@@ -217,10 +227,10 @@ func (diff *diffModified) IndexLine() string {
 	}
 
 	if diff.AMode != diff.BMode {
-		return fmt.Sprintf("index %s..%s\n", diff.AOID, diff.BOID)
+		return fmt.Sprintf("index %s..%s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID))
 	}
 
-	return fmt.Sprintf("index %s..%s %s\n", diff.AOID, diff.BOID, diff.AMode)
+	return fmt.Sprintf("index %s..%s %s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID), diff.AMode)
 }
 
 func (diff *diffModified) FileLine() string {
@@ -229,8 +239,17 @@ func (diff *diffModified) FileLine() string {
 		return ""
 	}
 
-	l := fmt.Sprintf("--- %s\n", diff.APath)
-	l += fmt.Sprintf("+++ %s\n", diff.BPath)
+	l := fmt.Sprintf("--- %s\n", filepath.Join("a", diff.APath))
+	l += fmt.Sprintf("+++ %s\n", filepath.Join("b", diff.BPath))
+
+	al, _ := lines(bytes.NewBuffer(diff.AData))
+	bl, _ := lines(bytes.NewBuffer(diff.BData))
+
+	m := newMyers(al, bl)
+
+	for _, hunk := range m.diff().hunks() {
+		l += fmt.Sprint(hunk)
+	}
 
 	return l
 
@@ -240,9 +259,11 @@ type diffDeleted struct {
 	AOID  string
 	AMode string
 	APath string
+	AData []byte
 	BOID  string
 	BMode string
 	BPath string
+	BData []byte
 }
 
 func (diff *diffDeleted) PathLine() string {
@@ -254,13 +275,22 @@ func (diff *diffDeleted) ModeLine() string {
 }
 
 func (diff *diffDeleted) IndexLine() string {
-	return fmt.Sprintf("index %s..%s\n", diff.AOID, diff.BOID)
+	return fmt.Sprintf("index %s..%s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID))
 }
 
 func (diff *diffDeleted) FileLine() string {
 
 	l := fmt.Sprintf("--- %s\n", diff.APath)
 	l += fmt.Sprintf("+++ %s\n", nullPath)
+
+	al, _ := lines(bytes.NewBuffer(diff.AData))
+	bl, _ := lines(bytes.NewBuffer(diff.BData))
+
+	m := newMyers(al, bl)
+
+	for _, hunk := range m.diff().hunks() {
+		l += fmt.Sprint(hunk)
+	}
 
 	return l
 
@@ -270,9 +300,11 @@ type diffAdded struct {
 	AOID  string
 	AMode string
 	APath string
+	AData []byte
 	BOID  string
 	BMode string
 	BPath string
+	BData []byte
 }
 
 func (diff *diffAdded) PathLine() string {
@@ -284,13 +316,22 @@ func (diff *diffAdded) ModeLine() string {
 }
 
 func (diff *diffAdded) IndexLine() string {
-	return fmt.Sprintf("index %s..%s\n", diff.AOID, diff.BOID)
+	return fmt.Sprintf("index %s..%s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID))
 }
 
 func (diff *diffAdded) FileLine() string {
 
 	l := fmt.Sprintf("--- %s\n", nullPath)
 	l += fmt.Sprintf("+++ %s\n", diff.BPath)
+
+	al, _ := lines(bytes.NewBuffer(diff.AData))
+	bl, _ := lines(bytes.NewBuffer(diff.BData))
+
+	m := newMyers(al, bl)
+
+	for _, hunk := range m.diff().hunks() {
+		l += fmt.Sprint(hunk)
+	}
 
 	return l
 
@@ -315,12 +356,18 @@ func (repo *repository) Diff(staged bool) ([]diff, error) {
 
 			deleted := &diffDeleted{}
 
-			deleted.AOID = object.ShortOID(repo.index.entries[path].oid)
+			deleted.AOID = repo.index.entries[path].oid
 			deleted.AMode = string(repo.index.entries[path].permission())
 			deleted.APath = filepath.Join("a", path)
+			obj, err := repo.object.Load(deleted.AOID)
+			if err != nil {
+				return nil, err
+			}
+			deleted.AData = obj.Data()
 
-			deleted.BOID = object.ShortOID(nullOID)
+			deleted.BOID = nullOID
 			deleted.BPath = filepath.Join("b", path)
+			deleted.BData = []byte(nullContents)
 
 			d = deleted
 
@@ -328,12 +375,17 @@ func (repo *repository) Diff(staged bool) ([]diff, error) {
 
 			modified := &diffModified{}
 
-			modified.AOID = object.ShortOID(repo.index.entries[path].oid)
+			modified.AOID = repo.index.entries[path].oid
 			modified.AMode = string(repo.index.entries[path].permission())
-			modified.APath = filepath.Join("a", path)
+			modified.APath = path
+
+			obj, err := repo.object.Load(modified.AOID)
+			if err != nil {
+				return nil, err
+			}
+			modified.AData = obj.Data()
 
 			f := repo.workspace[path]
-
 			f.Seek(0, io.SeekStart)
 			data, err := io.ReadAll(f)
 			if err != nil {
@@ -345,9 +397,10 @@ func (repo *repository) Diff(staged bool) ([]diff, error) {
 				return diffs, err
 			}
 
-			modified.BOID = object.ShortOID(blob.OID())
+			modified.BOID = blob.OID()
 			modified.BMode = string(f.Stats().permission())
-			modified.BPath = filepath.Join("b", path)
+			modified.BPath = path
+			modified.BData = data
 
 			d = modified
 
@@ -377,13 +430,24 @@ func (repo *repository) diffStaged() ([]diff, error) {
 
 			f := repo.head[path]
 
-			modified.AOID = object.ShortOID(f.OID())
+			modified.AOID = f.OID()
 			modified.AMode = string(f.Permission())
-			modified.APath = filepath.Join("b", path)
+			modified.APath = path
+			adata, err := io.ReadAll(f)
+			if err != nil {
+				return nil, err
+			}
+			modified.AData = adata
 
-			modified.BOID = object.ShortOID(repo.index.entries[path].oid)
+			modified.BOID = repo.index.entries[path].oid
 			modified.BMode = string(repo.index.entries[path].permission())
-			modified.BPath = filepath.Join("a", path)
+			modified.BPath = path
+
+			obj, err := repo.object.Load(modified.BOID)
+			if err != nil {
+				return nil, err
+			}
+			modified.BData = obj.Data()
 
 			d = modified
 
@@ -391,12 +455,19 @@ func (repo *repository) diffStaged() ([]diff, error) {
 
 			deleted := &diffDeleted{}
 
-			deleted.AOID = object.ShortOID(repo.head[path].OID())
+			deleted.AOID = repo.head[path].OID()
 			deleted.AMode = string(repo.head[path].Permission())
 			deleted.APath = filepath.Join("a", path)
 
-			deleted.BOID = object.ShortOID(nullOID)
+			obj, err := repo.object.Load(deleted.AOID)
+			if err != nil {
+				return nil, err
+			}
+			deleted.AData = obj.Data()
+
+			deleted.BOID = nullOID
 			deleted.BPath = filepath.Join("b", path)
+			deleted.BData = []byte(nullContents)
 
 			d = deleted
 
@@ -404,12 +475,18 @@ func (repo *repository) diffStaged() ([]diff, error) {
 
 			added := &diffAdded{}
 
-			added.AOID = object.ShortOID(nullOID)
+			added.AOID = nullOID
 			added.APath = filepath.Join("a", path)
+			added.AData = []byte(nullContents)
 
-			added.BOID = object.ShortOID(repo.index.entries[path].oid)
+			added.BOID = repo.index.entries[path].oid
 			added.BMode = string(repo.index.entries[path].permission())
 			added.BPath = filepath.Join("b", path)
+			obj, err := repo.object.Load(added.BOID)
+			if err != nil {
+				return nil, err
+			}
+			added.BData = obj.Data()
 
 			d = added
 
@@ -503,7 +580,7 @@ func (s status) LongFormat() string {
 
 func (repo *repository) detectChanges(headScanner TreeScanner) {
 
-	headScanner.Walk(func(name string, entry object.Entry) {
+	headScanner.Walk(func(name string, entry TreeEntry) {
 
 		if entry.IsTree() {
 			return
@@ -547,10 +624,6 @@ func (repo *repository) detectChanges(headScanner TreeScanner) {
 		repo.changed[e.filename] = status
 	}
 
-}
-
-func (repo *repository) Objects() []object.Object {
-	return repo.objects
 }
 
 func (repo *repository) Index() Index {

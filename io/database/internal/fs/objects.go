@@ -30,7 +30,7 @@ func (s *Objects) Store(objects ...object.Object) error {
 			continue
 		}
 
-		compressed, err := s.compress(o.Content())
+		compressed, err := s.compress(o.Raw())
 		if err != nil {
 			return err
 		}
@@ -143,6 +143,10 @@ func (s *Objects) ScanTree(oid string) model.TreeScanner {
 	return newTreeScanner(s.gotpath, oid)
 }
 
+func (s *Objects) Load(oid string) (object.Object, error) {
+	return load(s.gotpath, oid)
+}
+
 type treeScanner struct {
 	gotroot  string
 	rootTree string
@@ -152,7 +156,12 @@ func newTreeScanner(gotroot, rootTree string) *treeScanner {
 	return &treeScanner{gotroot, rootTree}
 }
 
-func (ts *treeScanner) Walk(f func(name string, obj object.Entry)) {
+type treeEntry struct {
+	object.TreeEntry
+	io.Reader
+}
+
+func (ts *treeScanner) Walk(f func(name string, obj model.TreeEntry)) {
 
 	if ts.rootTree == "" {
 		return
@@ -161,32 +170,37 @@ func (ts *treeScanner) Walk(f func(name string, obj object.Entry)) {
 	ts.walk(ts.rootTree, "", f)
 }
 
-func (ts *treeScanner) walk(oid, path string, f func(name string, obj object.Entry)) {
+func (ts *treeScanner) walk(oid, path string, f func(name string, obj model.TreeEntry)) {
 
 	o, err := ts.load(oid)
 	if err != nil {
 		return
 	}
 
-	tree, err := object.ParseTree(o)
+	ptree, err := object.ParseTree(o)
 	if err != nil {
 		return
 	}
 
-	ctree := []object.Entry{}
-	for _, entry := range tree.Children() {
+	ctrees := []object.TreeEntry{}
+	for _, entry := range ptree.Children() {
 
 		if entry.IsTree() {
-			ctree = append(ctree, entry)
+			ctrees = append(ctrees, entry)
 			continue
 		}
 
-		f(filepath.Join(path, entry.Basename()), entry)
+		obj, err := ts.load(entry.OID())
+		if err != nil {
+			return
+		}
+
+		f(filepath.Join(path, entry.Basename()), &treeEntry{entry, bytes.NewBuffer(obj.Data())})
 	}
 
-	for _, entry := range ctree {
-		f(filepath.Join(path, entry.Basename()), entry)
-		ts.walk(entry.OID(), filepath.Join(path, entry.Basename()), f)
+	for _, ctree := range ctrees {
+		f(filepath.Join(path, ctree.Basename()), &treeEntry{TreeEntry: ctree})
+		ts.walk(ctree.OID(), filepath.Join(path, ctree.Basename()), f)
 	}
 
 }

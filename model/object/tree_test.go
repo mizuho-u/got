@@ -8,7 +8,7 @@ import (
 
 func TestFlatTree(t *testing.T) {
 
-	entries := []object.Entry{}
+	entries := []object.TreeEntry{}
 
 	entries = append(entries, object.NewTreeEntry("world.txt", object.RegularFile, "cc628ccd10742baea8241c5924df992b5c019f71"))
 	entries = append(entries, object.NewTreeEntry("hello.txt", object.RegularFile, "ce013625030ba8dba906f756967f9e9ca394464a"))
@@ -26,7 +26,7 @@ func TestFlatTree(t *testing.T) {
 
 func TestNestedTree(t *testing.T) {
 
-	entries := []object.Entry{}
+	entries := []object.TreeEntry{}
 
 	entries = append(entries, object.NewTreeEntry("a.txt", object.RegularFile, "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
 	entries = append(entries, object.NewTreeEntry("b/d/e.txt", object.RegularFile, "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
@@ -47,7 +47,7 @@ func TestNestedTree(t *testing.T) {
 
 func TestTreeEntriesOrder(t *testing.T) {
 
-	entries := []object.Entry{}
+	entries := []object.TreeEntry{}
 
 	entries = append(entries, object.NewTreeEntry("foo.txt", object.RegularFile, "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
 	entries = append(entries, object.NewTreeEntry("foo/bar.txt", object.RegularFile, "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))

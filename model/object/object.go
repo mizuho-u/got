@@ -18,14 +18,16 @@ const (
 
 type Object interface {
 	OID() string
-	Content() []byte
+	Raw() []byte
 	Class() class
+	Data() []byte
 }
 
 type object struct {
-	id      string
-	class   class
-	content []byte
+	id    string
+	class class
+	raw   []byte
+	data  []byte
 }
 
 func newObject(data []byte, class class) (*object, error) {
@@ -53,7 +55,7 @@ func newObject(data []byte, class class) (*object, error) {
 
 	oid := hex.EncodeToString(sha1.Sum(nil))
 
-	return &object{oid, class, content}, nil
+	return &object{oid, class, content, data}, nil
 }
 
 func ParseObject(rawdata []byte) (Object, error) {
@@ -78,7 +80,8 @@ func ParseObject(rawdata []byte) (Object, error) {
 		return nil, err
 	}
 
-	object.content = buffer.Next(size)
+	object.raw = rawdata
+	object.data = buffer.Next(size)
 
 	sha1 := sha1.New()
 	_, err = sha1.Write(rawdata)
@@ -96,8 +99,11 @@ func (o *object) OID() string {
 	return o.id
 }
 
-func (o *object) Content() []byte {
-	return o.content
+func (o *object) Raw() []byte {
+	return o.raw
+}
+func (o *object) Data() []byte {
+	return o.data
 }
 
 func (o *object) Class() class {

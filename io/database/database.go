@@ -21,6 +21,7 @@ type refs interface {
 type objects interface {
 	Store(objects ...object.Object) error
 	ScanTree(oid string) model.TreeScanner
+	Load(oid string) (object.Object, error)
 }
 
 type index interface {
@@ -28,5 +29,6 @@ type index interface {
 	OpenForRead() error
 	Update(index model.Index) error
 	Read(p []byte) (n int, err error)
+	LoadObject(oid string) (object.Object, error)
 	IsNew() bool
 }

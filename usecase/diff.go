@@ -21,6 +21,8 @@ func Diff(ctx GotContext, staged bool) ExitCode {
 		opt = append(opt, model.WithIndex(db.Index()))
 	}
 
+	opt = append(opt, model.WithObjectLoader(db.Objects()))
+
 	repo, err := model.NewRepository(opt...)
 	if err != nil {
 		ctx.OutError(err)

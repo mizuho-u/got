@@ -25,6 +25,9 @@ func TestDiff(t *testing.T) {
 index 43dd47e..48f685c 100644
 --- a/1.txt
 +++ b/1.txt
+@@ -1,1 +1,1 @@
+-one
++hogehoge
 `,
 		},
 		{
@@ -45,6 +48,9 @@ new mode 100755
 index 43dd47e..48f685c
 --- a/1.txt
 +++ b/1.txt
+@@ -1,1 +1,1 @@
+-one
++hogehoge
 `,
 		},
 		{
@@ -55,6 +61,8 @@ deleted file mode 100644
 index 43dd47e..0000000
 --- a/1.txt
 +++ /dev/null
+@@ -1,1 +0,0 @@
+-one
 `,
 		},
 	}
@@ -126,15 +134,20 @@ new file mode 100644
 index 0000000..ea1f343
 --- /dev/null
 +++ b/a/4.txt
+@@ -0,0 +1,1 @@
++four
 `,
 		},
 		{
 			description:              "modify files",
 			newModifiedContentsFiles: map[string]string{"a/b/3.txt": "changed"},
-			expect: `diff --git b/a/b/3.txt a/a/b/3.txt
+			expect: `diff --git a/a/b/3.txt b/a/b/3.txt
 index 1d19714..21fb1ec 100644
---- b/a/b/3.txt
-+++ a/a/b/3.txt
+--- a/a/b/3.txt
++++ b/a/b/3.txt
+@@ -1,1 +1,1 @@
+-three
++changed
 `,
 		},
 		{
@@ -145,6 +158,8 @@ deleted file mode 100644
 index 43dd47e..0000000
 --- a/1.txt
 +++ /dev/null
+@@ -1,1 +0,0 @@
+-one
 `,
 		},
 	}

@@ -31,12 +31,12 @@ func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
 
 	parent := head.OID()
 
-	commitId, err := repo.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
+	commitId, objects, err := repo.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
 	if err != nil {
 		return 128
 	}
 
-	if err := db.Objects().Store(repo.Objects()...); err != nil {
+	if err := db.Objects().Store(objects...); err != nil {
 		return 128
 	}
 

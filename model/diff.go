@@ -7,12 +7,18 @@ import (
 	"sort"
 )
 
-func lines(r io.Reader) ([]string, error) {
+type line struct {
+	number int
+	text   string
+}
+
+func lines(r io.Reader) ([]*line, error) {
 
 	scan := bufio.NewScanner(r)
-	lines := []string{}
-	for scan.Scan() {
-		lines = append(lines, scan.Text())
+	lines := []*line{}
+
+	for i := 1; scan.Scan(); i++ {
+		lines = append(lines, &line{i, scan.Text()})
 	}
 
 	if err := scan.Err(); err != nil {
@@ -23,10 +29,10 @@ func lines(r io.Reader) ([]string, error) {
 }
 
 type myers struct {
-	a, b []string
+	a, b []*line
 }
 
-func newMyers(a, b []string) *myers {
+func newMyers(a, b []*line) *myers {
 	return &myers{a, b}
 }
 
@@ -43,15 +49,44 @@ const (
 )
 
 type edit struct {
-	diff symbol
-	str  string
+	diff  symbol
+	aline *line
+	bline *line
+	line  *line
+}
+
+func newEdit(diff symbol, aline, bline *line) *edit {
+
+	var line *line
+	if aline != nil {
+		line = aline
+	} else {
+		line = bline
+	}
+
+	return &edit{diff, aline, bline, line}
+
 }
 
 func (e *edit) String() string {
-	return fmt.Sprintf("%s%s", e.diff, e.str)
+	return fmt.Sprintf("%s%s", e.diff, e.line.text)
 }
 
 type edits []*edit
+
+func (es edits) filter(f func(e *edit) bool) (edits edits) {
+
+	for _, e := range es {
+
+		if f(e) {
+			edits = append(edits, e)
+		}
+
+	}
+
+	return
+
+}
 
 func (es edits) String() string {
 
@@ -61,6 +96,109 @@ func (es edits) String() string {
 	}
 
 	return s
+}
+
+const hunkContext int = 3
+
+func (es edits) hunks() []*hunk {
+
+	hunks := []*hunk{}
+	offset := 0
+
+	for {
+
+		for offset < len(es) && es[offset].diff == nochange {
+			offset++
+		}
+
+		if offset >= len(es) {
+			return hunks
+		}
+
+		offset -= hunkContext + 1
+
+		aStart := 0
+		if offset >= 0 {
+			aStart = es[offset].aline.number
+		}
+
+		bStart := 0
+		if offset >= 0 {
+			bStart = es[offset].bline.number
+		}
+
+		hunk := &hunk{aStart, bStart, []*edit{}}
+		offset = hunk.build(es, offset)
+		hunks = append(hunks, hunk)
+
+	}
+}
+
+type hunk struct {
+	aStart, bStart int
+	edits          edits
+}
+
+func (h *hunk) String() string {
+
+	l := fmt.Sprintln(h.header())
+
+	for _, e := range h.edits {
+		l += fmt.Sprintln(e)
+	}
+
+	return l
+
+}
+
+func (h *hunk) header() string {
+
+	aStart, aSize := h.offset(func(e *edit) bool { return e.aline != nil }, func(e *edit) int { return e.aline.number }, h.aStart)
+	bStart, bSize := h.offset(func(e *edit) bool { return e.bline != nil }, func(e *edit) int { return e.bline.number }, h.bStart)
+
+	return fmt.Sprintf("@@ -%d,%d +%d,%d @@", aStart, aSize, bStart, bSize)
+}
+
+func (h *hunk) offset(filterFunc func(*edit) bool, startFunc func(*edit) int, defaultStart int) (int, int) {
+
+	lines := h.edits.filter(filterFunc)
+
+	start := defaultStart
+	if len(lines) > 0 {
+		start = startFunc(lines[0])
+	}
+
+	return start, len(lines)
+}
+
+func (h *hunk) build(edits edits, offset int) int {
+
+	counter := -1
+	for counter != 0 {
+
+		if offset >= 0 && counter > 0 {
+			h.edits = append(h.edits, edits[offset])
+		}
+
+		offset++
+		if offset >= len(edits) {
+			break
+		}
+
+		if offset+hunkContext < len(edits) {
+
+			switch edits[offset+hunkContext].diff {
+			case insertion, deletion:
+				counter = 2*hunkContext + 1
+			default:
+				counter -= 1
+			}
+
+		}
+
+	}
+
+	return offset
 }
 
 func (my *myers) diff() edits {
@@ -79,15 +217,15 @@ func (my *myers) diff() edits {
 
 		if move.x == move.prev.x {
 
-			diff = append(diff, &edit{insertion, my.b[move.prev.y]})
+			diff = append(diff, newEdit(insertion, nil, my.b[move.prev.y]))
 
 		} else if move.y == move.prev.y {
 
-			diff = append(diff, &edit{deletion, my.a[move.prev.x]})
+			diff = append(diff, newEdit(deletion, my.a[move.prev.x], nil))
 
 		} else {
 
-			diff = append(diff, &edit{nochange, my.a[move.prev.x]})
+			diff = append(diff, newEdit(nochange, my.a[move.prev.x], my.b[move.prev.y]))
 
 		}
 	}
@@ -171,7 +309,7 @@ func (my *myers) shortestEdit() []intarray {
 			y := x - k
 
 			// 同じ文字列は飛ばす
-			for x < n && y < m && my.a[x] == my.b[y] {
+			for x < n && y < m && my.a[x].text == my.b[y].text {
 				x, y = x+1, y+1
 			}
 

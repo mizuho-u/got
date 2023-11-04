@@ -48,7 +48,7 @@ func (te *treeEntry) IsTree() bool {
 	return false
 }
 
-type Entry interface {
+type TreeEntry interface {
 	OID() string
 	IsTree() bool
 	Basename() string
@@ -57,7 +57,7 @@ type Entry interface {
 	build() error
 }
 
-func NewTreeEntry(filepath string, permission Permission, oid string) Entry {
+func NewTreeEntry(filepath string, permission Permission, oid string) TreeEntry {
 	return &treeEntry{filepath: filepath, perm: permission, oid: oid}
 }
 
@@ -65,17 +65,17 @@ type tree struct {
 	*object
 	full     string
 	base     string
-	children []Entry
+	children []TreeEntry
 	index    map[string]int
 }
 
-func BuildTree(entries []Entry) (*tree, error) {
+func BuildTree(entries []TreeEntry) (*tree, error) {
 
 	sort.SliceStable(entries, func(i, j int) bool {
 		return entries[i].fullpath() < entries[j].fullpath()
 	})
 
-	root := &tree{children: []Entry{}, index: map[string]int{}}
+	root := &tree{children: []TreeEntry{}, index: map[string]int{}}
 	for _, e := range entries {
 		root.add(internal.ParentDirs(e.fullpath()), e)
 	}
@@ -89,9 +89,9 @@ func BuildTree(entries []Entry) (*tree, error) {
 
 func ParseTree(o Object) (*tree, error) {
 
-	root := &tree{children: []Entry{}}
+	root := &tree{children: []TreeEntry{}}
 
-	buf := bytes.NewBuffer(o.Content())
+	buf := bytes.NewBuffer(o.Data())
 
 	for buf.Len() > 0 {
 
@@ -110,7 +110,7 @@ func ParseTree(o Object) (*tree, error) {
 		oid := internal.Unpack(buf.Next(20))
 
 		if p := Permission(perm); p == Directory {
-			root.children = append(root.children, &tree{children: []Entry{}, base: filepath, object: &object{id: oid}})
+			root.children = append(root.children, &tree{children: []TreeEntry{}, base: filepath, object: &object{id: oid}})
 		} else {
 			root.children = append(root.children, &treeEntry{perm: p, filepath: filepath, oid: oid})
 		}
@@ -121,7 +121,7 @@ func ParseTree(o Object) (*tree, error) {
 
 }
 
-func (t *tree) add(parents []string, e Entry) {
+func (t *tree) add(parents []string, e TreeEntry) {
 
 	if len(parents) == 0 {
 		t.index[e.Basename()] = len(t.children)
@@ -162,7 +162,7 @@ func (t *tree) addChildTree(basepath string) {
 	index := len(t.children)
 	t.index[basepath] = index
 
-	ct := &tree{children: []Entry{}, index: map[string]int{}, base: basepath}
+	ct := &tree{children: []TreeEntry{}, index: map[string]int{}, base: basepath}
 	t.children = append(t.children, ct)
 
 }
@@ -235,7 +235,7 @@ func (t *tree) IsTree() bool {
 	return true
 }
 
-func (t *tree) Children() []Entry {
+func (t *tree) Children() []TreeEntry {
 	return t.children
 }
 

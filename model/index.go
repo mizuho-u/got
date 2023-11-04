@@ -300,6 +300,7 @@ type indexEntry struct {
 	filename string
 	oid      string
 	stat     *FileStat
+	loader   IndexLoader
 }
 
 func NewIndexEntry(name, oid string, stat *FileStat) *indexEntry {
@@ -405,4 +406,8 @@ func (ie *indexEntry) matchTimes(stat *FileStat) bool {
 		ie.stat.mtime == stat.mtime &&
 		ie.stat.mtime_nsec == stat.mtime_nsec
 
+}
+
+func (ie *indexEntry) LoadObject() (object.Object, error) {
+	return ie.loader.LoadObject(ie.oid)
 }

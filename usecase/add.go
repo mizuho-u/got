@@ -34,13 +34,13 @@ func Add(ctx GotContext, paths ...string) ExitCode {
 			return 128
 		}
 
-		blobs, err := repo.Add(scanner)
+		objects, err := repo.Add(scanner)
 		if err != nil {
 			ctx.OutError(err)
 			return 128
 		}
 
-		db.Objects().Store(blobs...)
+		db.Objects().Store(objects...)
 
 	}
 

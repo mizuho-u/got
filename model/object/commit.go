@@ -47,7 +47,7 @@ func ParseCommit(obj Object) (Commit, error) {
 
 	c := &commit{object: &object{id: obj.OID()}}
 
-	buf := bytes.NewBuffer(obj.Content())
+	buf := bytes.NewBuffer(obj.Data())
 
 	str, err := buf.ReadString(0x0A)
 	if err != nil {

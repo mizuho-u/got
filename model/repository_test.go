@@ -32,7 +32,7 @@ func TestCommitRepository(t *testing.T) {
 		t.Fatal("create workspace failed. ", err)
 	}
 
-	commitId, err := repo.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319))
+	commitId, objects, err := repo.Commit("", "Mizuho Ueda", "mi_ueda@u-m.dev", "First Commit.", getTimeInJst(t, 1511204319))
 	if err != nil {
 		t.Fatal("commit failed. ", err)
 	}
@@ -42,15 +42,15 @@ func TestCommitRepository(t *testing.T) {
 		t.Fatalf("commitId not match. expect %s got %s", "a5969546fc417f4b362e5290ad8ee49b044bfc0e", commitId)
 	}
 
-	if len(repo.Objects()) != 2 {
-		t.Fatalf("unexpected objects length want 2 got %d", len(repo.Objects()))
+	if len(objects) != 2 {
+		t.Fatalf("unexpected objects length want 2 got %d", len(objects))
 	}
 
 	// expect tree, commit objects to be created
 	created := 0b0000
-	for _, o := range repo.Objects() {
+	for _, o := range objects {
 
-		switch getclass(o.Content()) {
+		switch getclass(o.Raw()) {
 		case "blob":
 			created |= 0b0001
 		case "tree":

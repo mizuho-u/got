@@ -7,16 +7,18 @@ import (
 	"syscall"
 
 	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/model/object"
 )
 
 type Index struct {
+	gotroot  string
 	path     string
 	file     *os.File
 	lockfile *lockfile
 }
 
 func NewIndex(gotpath string) *Index {
-	return &Index{path: filepath.Join(gotpath, "index")}
+	return &Index{gotroot: gotpath, path: filepath.Join(gotpath, "index")}
 }
 
 func (i *Index) OpenForUpdate() error {
@@ -75,6 +77,10 @@ func (i *Index) Read(p []byte) (n int, err error) {
 	}
 
 	return i.file.Read(p)
+}
+
+func (i *Index) LoadObject(oid string) (object.Object, error) {
+	return load(i.gotroot, oid)
 }
 
 func (i *Index) lock() error {

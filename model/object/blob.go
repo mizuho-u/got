@@ -26,5 +26,5 @@ func NewBlob(filename string, data []byte) (Blob, error) {
 }
 
 func ParseBlob(filename string, object *object) *blob {
-	return &blob{object, object.content, filename}
+	return &blob{object, object.raw, filename}
 }

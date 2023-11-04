@@ -1,10 +1,8 @@
 package usecase
 
 import (
-	"fmt"
-
 	"github.com/mizuho-u/got/io/database"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/model"
 )
 
 func ShowHead(ctx GotContext, paths ...string) ExitCode {
@@ -22,12 +20,12 @@ func ShowHead(ctx GotContext, paths ...string) ExitCode {
 		tree = head.Tree()
 	}
 
-	db.Objects().ScanTree(tree).Walk(func(name string, entry object.Entry) {
+	db.Objects().ScanTree(tree).Walk(func(name string, entry model.TreeEntry) {
 		if entry.IsTree() {
 			return
 		}
 
-		fmt.Printf("%s %s %s\n", entry.Permission(), entry.OID(), name)
+		// fmt.Printf("%s %s %s\n", entry.Permission(), entry.OID(), name)
 	})
 
 	return 0
