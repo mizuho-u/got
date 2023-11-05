@@ -127,6 +127,16 @@ func TestDiffCached(t *testing.T) {
 		expect                   string
 	}{
 		{
+			description:   "add a empty file",
+			newAddedFiles: map[string]string{"a/4.txt": ""},
+			expect: `diff --git a/a/4.txt b/a/4.txt
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/a/4.txt
+`,
+		},
+		{
 			description:   "add files",
 			newAddedFiles: map[string]string{"a/4.txt": "four"},
 			expect: `diff --git a/a/4.txt b/a/4.txt

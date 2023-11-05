@@ -277,6 +277,10 @@ func (my *myers) shortestEdit() []intarray {
 	n, m := len(my.a), len(my.b)
 	max := n + m
 
+	if max == 0 {
+		return []intarray{}
+	}
+
 	xs := make(intarray, 2*max+1)
 	// (0, 0)の前は(0, -1)とする
 	xs.set(1, 0)
