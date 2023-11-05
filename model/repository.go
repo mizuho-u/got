@@ -191,6 +191,7 @@ type diff interface {
 	ModeLine() string
 	IndexLine() string
 	FileLine() string
+	Hunks() []*hunk
 }
 
 type diffModified struct {
@@ -242,16 +243,18 @@ func (diff *diffModified) FileLine() string {
 	l := fmt.Sprintf("--- %s\n", filepath.Join("a", diff.APath))
 	l += fmt.Sprintf("+++ %s\n", filepath.Join("b", diff.BPath))
 
+	return l
+
+}
+
+func (diff *diffModified) Hunks() []*hunk {
+
 	al, _ := lines(bytes.NewBuffer(diff.AData))
 	bl, _ := lines(bytes.NewBuffer(diff.BData))
 
 	m := newMyers(al, bl)
 
-	for _, hunk := range m.diff().hunks() {
-		l += fmt.Sprint(hunk)
-	}
-
-	return l
+	return m.diff().hunks()
 
 }
 
@@ -283,16 +286,18 @@ func (diff *diffDeleted) FileLine() string {
 	l := fmt.Sprintf("--- %s\n", diff.APath)
 	l += fmt.Sprintf("+++ %s\n", nullPath)
 
+	return l
+
+}
+
+func (diff *diffDeleted) Hunks() []*hunk {
+
 	al, _ := lines(bytes.NewBuffer(diff.AData))
 	bl, _ := lines(bytes.NewBuffer(diff.BData))
 
 	m := newMyers(al, bl)
 
-	for _, hunk := range m.diff().hunks() {
-		l += fmt.Sprint(hunk)
-	}
-
-	return l
+	return m.diff().hunks()
 
 }
 
@@ -324,16 +329,17 @@ func (diff *diffAdded) FileLine() string {
 	l := fmt.Sprintf("--- %s\n", nullPath)
 	l += fmt.Sprintf("+++ %s\n", diff.BPath)
 
+	return l
+}
+
+func (diff *diffAdded) Hunks() []*hunk {
+
 	al, _ := lines(bytes.NewBuffer(diff.AData))
 	bl, _ := lines(bytes.NewBuffer(diff.BData))
 
 	m := newMyers(al, bl)
 
-	for _, hunk := range m.diff().hunks() {
-		l += fmt.Sprint(hunk)
-	}
-
-	return l
+	return m.diff().hunks()
 
 }
 

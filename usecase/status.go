@@ -15,6 +15,7 @@ func Status(ctx GotContext, porcelain bool) ExitCode {
 
 	err := db.Index().OpenForUpdate()
 	if err != nil {
+		ctx.OutError(err)
 		return 128
 	}
 
@@ -37,10 +38,12 @@ func Status(ctx GotContext, porcelain bool) ExitCode {
 
 	head, err := db.Refs().Head()
 	if err != nil {
+		ctx.OutError(err)
 		return 128
 	}
 
 	if repo.Scan(scanner, db.Objects().ScanTree(head.Tree())) != nil {
+		ctx.OutError(err)
 		return 128
 	}
 

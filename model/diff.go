@@ -43,9 +43,9 @@ func (s symbol) String() string {
 }
 
 const (
-	nochange  symbol = " "
-	insertion symbol = "+"
-	deletion  symbol = "-"
+	Nochange  symbol = " "
+	Insertion symbol = "+"
+	Deletion  symbol = "-"
 )
 
 type edit struct {
@@ -72,6 +72,10 @@ func (e *edit) String() string {
 	return fmt.Sprintf("%s%s", e.diff, e.line.text)
 }
 
+func (e *edit) Diff() symbol {
+	return e.diff
+}
+
 type edits []*edit
 
 func (es edits) filter(f func(e *edit) bool) (edits edits) {
@@ -85,7 +89,6 @@ func (es edits) filter(f func(e *edit) bool) (edits edits) {
 	}
 
 	return
-
 }
 
 func (es edits) String() string {
@@ -107,7 +110,7 @@ func (es edits) hunks() []*hunk {
 
 	for {
 
-		for offset < len(es) && es[offset].diff == nochange {
+		for offset < len(es) && es[offset].diff == Nochange {
 			offset++
 		}
 
@@ -141,17 +144,20 @@ type hunk struct {
 
 func (h *hunk) String() string {
 
-	l := fmt.Sprintln(h.header())
+	l := fmt.Sprintln(h.Header())
 
 	for _, e := range h.edits {
 		l += fmt.Sprintln(e)
 	}
 
 	return l
-
 }
 
-func (h *hunk) header() string {
+func (h *hunk) Edits() edits {
+	return h.edits
+}
+
+func (h *hunk) Header() string {
 
 	aStart, aSize := h.offset(func(e *edit) bool { return e.aline != nil }, func(e *edit) int { return e.aline.number }, h.aStart)
 	bStart, bSize := h.offset(func(e *edit) bool { return e.bline != nil }, func(e *edit) int { return e.bline.number }, h.bStart)
@@ -188,7 +194,7 @@ func (h *hunk) build(edits edits, offset int) int {
 		if offset+hunkContext < len(edits) {
 
 			switch edits[offset+hunkContext].diff {
-			case insertion, deletion:
+			case Insertion, Deletion:
 				counter = 2*hunkContext + 1
 			default:
 				counter -= 1
@@ -217,15 +223,15 @@ func (my *myers) diff() edits {
 
 		if move.x == move.prev.x {
 
-			diff = append(diff, newEdit(insertion, nil, my.b[move.prev.y]))
+			diff = append(diff, newEdit(Insertion, nil, my.b[move.prev.y]))
 
 		} else if move.y == move.prev.y {
 
-			diff = append(diff, newEdit(deletion, my.a[move.prev.x], nil))
+			diff = append(diff, newEdit(Deletion, my.a[move.prev.x], nil))
 
 		} else {
 
-			diff = append(diff, newEdit(nochange, my.a[move.prev.x], my.b[move.prev.y]))
+			diff = append(diff, newEdit(Nochange, my.a[move.prev.x], my.b[move.prev.y]))
 
 		}
 	}

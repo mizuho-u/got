@@ -15,7 +15,7 @@ type GotContext interface {
 	Username() string
 	Email() string
 
-	Out(string, Color) error
+	Out(string, ColorAttribute) error
 	OutError(error) error
 }
 
@@ -30,7 +30,7 @@ type gotContext struct {
 }
 
 type ColorlizeWriter interface {
-	Write(p []byte, color Color) (n int, err error)
+	Write(p []byte, color ColorAttribute) (n int, err error)
 }
 
 func NewContext(ctx c.Context, workspaceRoot, gotroot, username, email string, out io.Writer, err io.Writer) GotContext {
@@ -53,23 +53,33 @@ func (g *gotContext) Email() string {
 	return g.email
 }
 
-type Color string
+type ColorAttribute uint
 
 const (
-	none  Color = ""
-	red   Color = "red"
-	green Color = "green"
+	none ColorAttribute = 0
+	bold                = 1 << iota
+	red
+	green
+	cyan
 )
 
-func (g *gotContext) Out(msg string, c Color) (err error) {
+func (g *gotContext) Out(msg string, c ColorAttribute) (err error) {
 
-	switch c {
-	case red:
-		_, err = color.New(color.FgRed).Fprint(g.w, msg)
-	case green:
-		_, err = color.New(color.FgGreen).Fprint(g.w, msg)
+	attrs := []color.Attribute{}
+	switch {
+	case c&bold != 0:
+		attrs = append(attrs, color.Bold)
+	case c&red != 0:
+		attrs = append(attrs, color.FgRed)
+	case c&green != 0:
+		attrs = append(attrs, color.FgGreen)
+	case c&cyan != 0:
+		attrs = append(attrs, color.FgCyan)
 	default:
-		_, err = g.w.Write([]byte(msg))
+	}
+
+	if _, err = color.New(attrs...).Fprint(g.w, msg); err != nil {
+		return err
 	}
 
 	return err
