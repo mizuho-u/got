@@ -5,14 +5,14 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func ShowHead(ctx GotContext, paths ...string) ExitCode {
+func ShowHead(ctx GotContext, paths ...string) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	head, err := db.Refs().Head()
 	if err != nil {
-		return 128
+		return err
 	}
 
 	tree := ""
@@ -28,5 +28,5 @@ func ShowHead(ctx GotContext, paths ...string) ExitCode {
 		// fmt.Printf("%s %s %s\n", entry.Permission(), entry.OID(), name)
 	})
 
-	return 0
+	return nil
 }

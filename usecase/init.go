@@ -6,16 +6,15 @@ import (
 
 type ExitCode int
 
-func InitDir(ctx GotContext) ExitCode {
+func InitDir(ctx GotContext) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 
 	if err := db.Init(); err != nil {
-		return 128
+		return err
 	}
 
 	ctx.Out("Initialized empty Jit repository in "+ctx.WorkspaceRoot(), none)
 
-	return 0
-
+	return nil
 }

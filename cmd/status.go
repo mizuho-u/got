@@ -5,8 +5,6 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"os"
-
 	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
 )
@@ -21,16 +19,15 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		workspace, _ := cmd.Flags().GetString("path")
 		porcelain, _ := cmd.Flags().GetBool("porcelain")
 
 		ctx := mustNewContext(workspace, cmd)
-		status := int(usecase.Status(ctx, porcelain))
-		ctx.Close()
+		defer ctx.Close()
 
-		os.Exit(status)
+		return usecase.Status(ctx, porcelain)
 	},
 }
 

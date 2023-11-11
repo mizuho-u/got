@@ -102,8 +102,8 @@ index 43dd47e..0000000
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Diff(newContext(dir, "", "", out, out), false); code != 0 {
-				t.Error("expect exit code 0, got ", code)
+			if err := usecase.Diff(newContext(dir, "", "", out, out), false); err != nil {
+				t.Error(err)
 			}
 
 			if out.String() != tc.expect {
@@ -218,8 +218,8 @@ index 43dd47e..0000000
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Diff(newContext(dir, "", "", out, out), true); code != 0 {
-				t.Error("expect exit code 0, got ", code)
+			if err := usecase.Diff(newContext(dir, "", "", out, out), true); err != nil {
+				t.Error(err)
 			}
 
 			if out.String() != tc.expect {

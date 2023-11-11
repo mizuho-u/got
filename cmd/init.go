@@ -20,7 +20,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		var path string
 		if len(os.Args) == 3 {
@@ -28,10 +28,9 @@ to quickly create a Cobra application.`,
 		}
 
 		ctx := mustNewContext(path, cmd)
-		status := int(usecase.InitDir(ctx))
-		ctx.Close()
+		defer ctx.Close()
 
-		os.Exit(status)
+		return usecase.InitDir(ctx)
 	},
 }
 

@@ -26,8 +26,10 @@ func TestInitDir(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	// act
-	code := usecase.InitDir(newContext(dir, "", "", out, out))
-	testExitCode(t, 0, code)
+	err = usecase.InitDir(newContext(dir, "", "", out, out))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// assert
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
@@ -54,8 +56,10 @@ func initDir(t testing.TB) string {
 
 	dir := t.TempDir()
 
-	code := usecase.InitDir(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}))
-	testExitCode(t, 0, code)
+	err := usecase.InitDir(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	return dir
 
@@ -128,12 +132,4 @@ func removeAll(t testing.TB, dir, name string) {
 
 func newContext(dir, username, email string, out, outErr io.Writer) usecase.GotContext {
 	return usecase.NewContext(context.Background(), dir, ".git", username, email, out, outErr)
-}
-
-func testExitCode(t testing.TB, expect, got usecase.ExitCode) {
-
-	if expect != got {
-		t.Fatalf("expect exit code %d, got %d", expect, got)
-	}
-
 }

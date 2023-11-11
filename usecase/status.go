@@ -8,15 +8,14 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Status(ctx GotContext, porcelain bool) ExitCode {
+func Status(ctx GotContext, porcelain bool) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	err := db.Index().OpenForUpdate()
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	opt := []model.WorkspaceOption{}
@@ -26,25 +25,21 @@ func Status(ctx GotContext, porcelain bool) ExitCode {
 
 	repo, err := model.NewRepository(opt...)
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	scanner, err := workspace.Scan(ctx.WorkspaceRoot(), ctx.WorkspaceRoot(), ctx.GotRoot())
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	head, err := db.Refs().Head()
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	if repo.Scan(scanner, db.Objects().ScanTree(head.Tree())) != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	if porcelain {
@@ -106,9 +101,8 @@ func Status(ctx GotContext, porcelain bool) ExitCode {
 	}
 
 	if err := db.Index().Update(repo.Index()); err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
-	return 0
+	return nil
 }

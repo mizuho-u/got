@@ -15,16 +15,18 @@ func TestFirstCommit(t *testing.T) {
 	dir := initDir(t)
 	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
-	if code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f); err != nil {
+		t.Fatal(err)
 	}
 
 	// act
 	out := &bytes.Buffer{}
-	code := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "First Commit.\n\nthe third and subsequent lines...\n", time.Unix(1694356071, 0))
+	err := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "First Commit.\n\nthe third and subsequent lines...\n", time.Unix(1694356071, 0))
 
 	// assert
-	testExitCode(t, 0, code)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expect := `[(root-commit) 489512179ae8ab55607b0e109221d2a38edacfca] First Commit.`
 
@@ -40,23 +42,27 @@ func TestSecondCommit(t *testing.T) {
 	dir := initDir(t)
 	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
-	if code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f); err != nil {
+		t.Fatal(err)
 	}
 
-	code := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", &bytes.Buffer{}, &bytes.Buffer{}), "First Commit.\n\nthe third and subsequent lines...\n", time.Unix(1697289936, 0))
-	testExitCode(t, 0, code)
+	err := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", &bytes.Buffer{}, &bytes.Buffer{}), "First Commit.\n\nthe third and subsequent lines...\n", time.Unix(1697289936, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// act
 	f2 := createFile(t, dir, "hello2.txt", []byte("Hello world 2.\n"))
 
-	if code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f2); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f2); err != nil {
+		t.Fatal(err)
 	}
 
 	out := &bytes.Buffer{}
-	code = usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "second commit\n", time.Unix(1697289992, 0))
-	testExitCode(t, 0, code)
+	err = usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "second commit\n", time.Unix(1697289992, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// assert
 	expect := `[3e69b36ae663a7361d6bdbdc154952aabdfe86f2] second commit`
@@ -77,14 +83,16 @@ func TestCommitExcutableFiles(t *testing.T) {
 		t.Fatal("failed to chmod test file. ", err)
 	}
 
-	if code := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), hello); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), hello); err != nil {
+		t.Fatal(err)
 	}
 
 	// act
 	out := &bytes.Buffer{}
-	code := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "commit a executable file\n", time.Unix(1697288601, 0))
-	testExitCode(t, 0, code)
+	err := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "commit a executable file\n", time.Unix(1697288601, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expect := `[(root-commit) 09edd72799f0ed3fc1350b19ce6eb3b64fabdc01] commit a executable file`
 

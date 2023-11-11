@@ -18,8 +18,8 @@ func TestStatus(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	out := &bytes.Buffer{}
-	if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Status(newContext(dir, "", "", out, out), true); err != nil {
+		t.Fatal(err)
 	}
 
 	expect := fmt.Sprintf("?? %s\n?? %s\n", filepath.Base(f1), filepath.Base(f2))
@@ -36,20 +36,20 @@ func TestStatusIndex(t *testing.T) {
 	f1 := createFile(t, dir, "hello.txt", []byte("hello.\n"))
 
 	out := &bytes.Buffer{}
-	if code := usecase.Add(newContext(dir, "", "", out, out), f1); code != 0 {
-		t.Fatal(out)
+	if err := usecase.Add(newContext(dir, "", "", out, out), f1); err != nil {
+		t.Fatal(err)
 	}
 
 	out.Reset()
-	if code := usecase.Commit(newContext(dir, "", "", out, out), "commit message", time.Unix(1677142145, 0)); code != 0 {
-		t.Fatal(out)
+	if err := usecase.Commit(newContext(dir, "", "", out, out), "commit message", time.Unix(1677142145, 0)); err != nil {
+		t.Fatal(err)
 	}
 
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	out.Reset()
-	if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Status(newContext(dir, "", "", out, out), true); err != nil {
+		t.Fatal(err)
 	}
 
 	expect := fmt.Sprintf("?? %s\n", filepath.Base(f2))
@@ -116,8 +116,8 @@ func TestStatusUntrackedDirectories(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
-				t.Error("expect exit code 0, got ", code)
+			if err := usecase.Status(newContext(dir, "", "", out, out), true); err != nil {
+				t.Error(err)
 			}
 
 			if out.String() != tc.expect {
@@ -218,8 +218,8 @@ func TestStatusChangedContents(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
-				t.Error("expect exit code 0, got ", code)
+			if err := usecase.Status(newContext(dir, "", "", out, out), true); err != nil {
+				t.Error(err)
 			}
 
 			if out.String() != tc.expect {
@@ -318,8 +318,8 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out), true); code != 0 {
-				t.Error("expect exit code 0, got ", code)
+			if err := usecase.Status(newContext(dir, "", "", out, out), true); err != nil {
+				t.Error(err)
 			}
 
 			if out.String() != tc.expect {
@@ -417,8 +417,8 @@ func TestStatusLongFormat(t *testing.T) {
 			}
 
 			out := &bytes.Buffer{}
-			if code := usecase.Status(newContext(dir, "", "", out, out), false); code != 0 {
-				t.Error("expect exit code 0, got ", code)
+			if err := usecase.Status(newContext(dir, "", "", out, out), false); err != nil {
+				t.Error(err)
 			}
 
 			if out.String() != tc.expect {

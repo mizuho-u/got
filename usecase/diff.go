@@ -8,14 +8,14 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Diff(ctx GotContext, staged bool) ExitCode {
+func Diff(ctx GotContext, staged bool) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	err := db.Index().OpenForUpdate()
 	if err != nil {
-		return 128
+		return err
 	}
 
 	opt := []model.WorkspaceOption{}
@@ -27,29 +27,25 @@ func Diff(ctx GotContext, staged bool) ExitCode {
 
 	repo, err := model.NewRepository(opt...)
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	scanner, err := workspace.Scan(ctx.WorkspaceRoot(), ctx.WorkspaceRoot(), ctx.GotRoot())
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 	head, err := db.Refs().Head()
 	if err != nil {
-		return 128
+		return err
 	}
 
 	if repo.Scan(scanner, db.Objects().ScanTree(head.Tree())) != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	diffs, err := repo.Diff(staged)
 	if err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
 	for _, diff := range diffs {
@@ -82,9 +78,8 @@ func Diff(ctx GotContext, staged bool) ExitCode {
 	}
 
 	if err := db.Index().Update(repo.Index()); err != nil {
-		ctx.OutError(err)
-		return 128
+		return err
 	}
 
-	return 0
+	return nil
 }

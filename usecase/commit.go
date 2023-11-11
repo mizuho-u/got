@@ -9,46 +9,46 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Commit(ctx GotContext, commitMessage string, now time.Time) ExitCode {
+func Commit(ctx GotContext, commitMessage string, now time.Time) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()
 
 	err := db.Index().OpenForRead()
 	if err != nil {
-		return 128
+		return err
 	}
 
 	repo, err := model.NewRepository(model.WithIndex(db.Index()))
 	if err != nil {
-		return 128
+		return err
 	}
 
 	head, err := db.Refs().Head()
 	if err != nil {
-		return 128
+		return err
 	}
 
 	parent := head.OID()
 
 	commitId, objects, err := repo.Commit(parent, ctx.Username(), ctx.Email(), commitMessage, now)
 	if err != nil {
-		return 128
+		return err
 	}
 
 	if err := db.Objects().Store(objects...); err != nil {
-		return 128
+		return err
 	}
 
 	if err := db.Refs().UpdateHEAD(commitId); err != nil {
-		return 128
+		return err
 	}
 
 	if err := ctx.Out(msg(parent, commitId, commitMessage), none); err != nil {
-		return 128
+		return err
 	}
 
-	return 0
+	return nil
 }
 
 func msg(parent, commitId, commitMessage string) string {

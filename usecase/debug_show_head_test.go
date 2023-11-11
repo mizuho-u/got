@@ -17,17 +17,17 @@ func TestShowHead(t *testing.T) {
 	createFile(t, dir, "a/b/c/hello3.txt", []byte("Hello world 3.\n"))
 
 	ctx := newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{})
-	if code := usecase.Add(ctx, ctx.WorkspaceRoot()); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Add(ctx, ctx.WorkspaceRoot()); err != nil {
+		t.Fatal(err)
 	}
 
 	out := &bytes.Buffer{}
-	if code := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "commit\n", time.Unix(1694356071, 0)); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.Commit(newContext(dir, "Mizuho Ueda", "mi_ueda@u-m.dev", out, out), "commit\n", time.Unix(1694356071, 0)); err != nil {
+		t.Fatal("expect exit code 0, got ", err)
 	}
 
-	if code := usecase.ShowHead(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{})); code != 0 {
-		t.Fatal("expect exit code 0, got ", code)
+	if err := usecase.ShowHead(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{})); err != nil {
+		t.Fatal(err)
 	}
 
 }
