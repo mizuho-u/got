@@ -87,7 +87,7 @@ index 43dd47e..0000000
 			modifyFileTime(t, dir, "a/b/3.txt", now, now)
 			add(t, dir, f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			commit(t, dir, "", "", "commit massage", time.Unix(1677142145, 0))
 
 			for _, file := range tc.newModifiedFiles {
 				modifyFileMode(t, dir, file, 0755)
@@ -194,7 +194,7 @@ index 43dd47e..0000000
 			modifyFileTime(t, dir, "a/b/3.txt", now, now)
 			add(t, dir, f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			commit(t, dir, "", "", "commit massage", time.Unix(1677142145, 0))
 
 			for file, contents := range tc.newAddedFiles {
 				f := createFile(t, dir, file, []byte(contents))

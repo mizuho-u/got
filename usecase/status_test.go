@@ -35,19 +35,13 @@ func TestStatusIndex(t *testing.T) {
 	dir := initDir(t)
 	f1 := createFile(t, dir, "hello.txt", []byte("hello.\n"))
 
-	out := &bytes.Buffer{}
-	if err := usecase.Add(newContext(dir, "", "", out, out), f1); err != nil {
-		t.Fatal(err)
-	}
+	add(t, dir, f1)
 
-	out.Reset()
-	if err := usecase.Commit(newContext(dir, "", "", out, out), "commit message", time.Unix(1677142145, 0)); err != nil {
-		t.Fatal(err)
-	}
+	commit(t, dir, "", "", "commit message", time.Unix(1677142145, 0))
 
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
-	out.Reset()
+	out := &bytes.Buffer{}
 	if err := usecase.Status(newContext(dir, "", "", out, out), true); err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +105,7 @@ func TestStatusUntrackedDirectories(t *testing.T) {
 			for _, f := range tc.tracked {
 
 				add(t, dir, fnames[f])
-				commit(t, dir, "commit message", time.Unix(1677142145, 0))
+				commit(t, dir, "", "", "commit message", time.Unix(1677142145, 0))
 
 			}
 
@@ -203,7 +197,7 @@ func TestStatusChangedContents(t *testing.T) {
 			add(t, dir, f2)
 			add(t, dir, f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			commit(t, dir, "", "", "commit massage", time.Unix(1677142145, 0))
 
 			for file, contents := range tc.newcontents {
 				createFile(t, dir, file, []byte(contents))
@@ -294,7 +288,7 @@ func TestStatusHeadIndexDifferences(t *testing.T) {
 			modifyFileTime(t, dir, "a/b/3.txt", now, now)
 			add(t, dir, f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			commit(t, dir, "", "", "commit massage", time.Unix(1677142145, 0))
 
 			for file, contents := range tc.newAddedFiles {
 				f := createFile(t, dir, file, []byte(contents))
@@ -393,7 +387,7 @@ func TestStatusLongFormat(t *testing.T) {
 			modifyFileTime(t, dir, "a/b/3.txt", now, now)
 			add(t, dir, f3)
 
-			commit(t, dir, "commit massage", time.Unix(1677142145, 0))
+			commit(t, dir, "", "", "commit massage", time.Unix(1677142145, 0))
 
 			for file, contents := range tc.newAddedFiles {
 				f := createFile(t, dir, file, []byte(contents))

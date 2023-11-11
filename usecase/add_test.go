@@ -16,10 +16,7 @@ func TestAddSingleFile(t *testing.T) {
 	f := createFile(t, dir, "hello.txt", []byte("Hello world.\n"))
 
 	// act
-	err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	add(t, dir, f)
 
 	// assert
 	testlsfiles(t, dir, "hello.txt\n")
@@ -34,12 +31,9 @@ func TestAddMultipleFiles(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f1, f2)
+	add(t, dir, f1, f2)
 
 	// assert
-	if err != nil {
-		t.Fatal(err)
-	}
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
 
 }
@@ -52,13 +46,9 @@ func TestAddFilesFromDirectory(t *testing.T) {
 	createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), dir)
+	add(t, dir, dir)
 
 	// assert
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
 
 }
@@ -71,15 +61,8 @@ func TestModifyTheIndex(t *testing.T) {
 	f2 := createFile(t, dir, "world.txt", []byte("world.\n"))
 
 	// act
-	err := usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = usecase.Add(newContext(dir, "", "", &bytes.Buffer{}, &bytes.Buffer{}), f2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	add(t, dir, f1)
+	add(t, dir, f2)
 
 	// assert
 	testlsfiles(t, dir, "hello.txt\nworld.txt\n")
