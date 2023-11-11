@@ -1,15 +1,18 @@
 package usecase
 
 import (
-	c "context"
+	"context"
+	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/fatih/color"
 )
 
 type GotContext interface {
-	c.Context
+	context.Context
 	WorkspaceRoot() string
 	GotRoot() string
 	Username() string
@@ -17,10 +20,12 @@ type GotContext interface {
 
 	Out(string, ColorAttribute) error
 	OutError(error) error
+
+	Close() error
 }
 
 type gotContext struct {
-	c.Context
+	context.Context
 	workspaceRoot string
 	gotRoot       string
 	username      string
@@ -29,12 +34,9 @@ type gotContext struct {
 	e             io.Writer
 }
 
-type ColorlizeWriter interface {
-	Write(p []byte, color ColorAttribute) (n int, err error)
-}
+func NewContext(ctx context.Context, workspaceRoot, gotroot, username, email string, out io.Writer, errOut io.Writer) GotContext {
 
-func NewContext(ctx c.Context, workspaceRoot, gotroot, username, email string, out io.Writer, err io.Writer) GotContext {
-	return &gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot), username, email, out, err}
+	return &gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot), username, email, out, errOut}
 }
 
 func (g *gotContext) WorkspaceRoot() string {
@@ -65,6 +67,12 @@ const (
 
 func (g *gotContext) Out(msg string, c ColorAttribute) (err error) {
 
+	_, err = g.w.Write([]byte(colorize(msg, c)))
+	return
+}
+
+func colorize(msg string, c ColorAttribute) string {
+
 	attrs := []color.Attribute{}
 	switch {
 	case c&bold != 0:
@@ -78,11 +86,7 @@ func (g *gotContext) Out(msg string, c ColorAttribute) (err error) {
 	default:
 	}
 
-	if _, err = color.New(attrs...).Fprint(g.w, msg); err != nil {
-		return err
-	}
-
-	return err
+	return color.New(attrs...).Sprint(msg)
 }
 
 func (g *gotContext) OutError(e error) error {
@@ -90,4 +94,55 @@ func (g *gotContext) OutError(e error) error {
 	_, err := g.w.Write([]byte(e.Error()))
 
 	return err
+}
+
+func (g *gotContext) Close() error {
+	return nil
+}
+
+type gotContextPager struct {
+	*gotContext
+	cmd *exec.Cmd
+	out io.WriteCloser
+}
+
+func NewContextPager(ctx context.Context, workspaceRoot, gotroot, username, email string, out io.Writer, errOut io.Writer) (GotContext, error) {
+
+	pager := "less"
+	if p := os.Getenv("GIT_PAGER"); p != "" {
+		pager = p
+	}
+	if p := os.Getenv("PAGER"); p != "" {
+		pager = p
+	}
+
+	cmd := exec.Command(pager)
+	cmd.Env = append(os.Environ(), "LESS=FRX", "LV=-c")
+
+	stdout, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	return &gotContextPager{&gotContext{ctx, workspaceRoot, filepath.Join(workspaceRoot, gotroot), username, email, out, errOut}, cmd, stdout}, nil
+}
+
+func (g *gotContextPager) Out(msg string, c ColorAttribute) (err error) {
+
+	_, err = fmt.Fprint(g.out, colorize(msg, c))
+	return
+}
+
+func (g *gotContextPager) Close() error {
+
+	g.out.Close()
+	return g.cmd.Wait()
 }

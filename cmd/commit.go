@@ -32,7 +32,12 @@ to quickly create a Cobra application.`,
 			message += sc.Text()
 		}
 
-		os.Exit(int(usecase.Commit(mustNewContext(workspace, cmd), message, time.Now())))
+		ctx := mustNewContext(workspace, cmd)
+		status := int(usecase.Commit(ctx, message, time.Now()))
+
+		ctx.Close()
+
+		os.Exit(status)
 	},
 }
 

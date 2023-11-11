@@ -23,8 +23,12 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		workspace, _ := cmd.Flags().GetString("path")
+		ctx := mustNewContext(workspace, cmd)
 
-		os.Exit(int(usecase.Add(mustNewContext(workspace, cmd), args...)))
+		status := int(usecase.Add(ctx, args...))
+
+		ctx.Close()
+		os.Exit(status)
 
 	},
 }

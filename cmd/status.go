@@ -26,7 +26,11 @@ to quickly create a Cobra application.`,
 		workspace, _ := cmd.Flags().GetString("path")
 		porcelain, _ := cmd.Flags().GetBool("porcelain")
 
-		os.Exit(int(usecase.Status(mustNewContext(workspace, cmd), porcelain)))
+		ctx := mustNewContext(workspace, cmd)
+		status := int(usecase.Status(ctx, porcelain))
+		ctx.Close()
+
+		os.Exit(status)
 	},
 }
 

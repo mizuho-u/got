@@ -74,5 +74,10 @@ func mustNewContext(workspace string, cmd *cobra.Command) usecase.GotContext {
 		workspace = abs
 	}
 
-	return usecase.NewContext(context.Background(), workspace, gotdir, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), cmd.OutOrStdout(), cmd.OutOrStderr())
+	ctx, err := usecase.NewContextPager(context.Background(), workspace, gotdir, os.Getenv("GIT_AUTHOR_NAME"), os.Getenv("GIT_AUTHOR_EMAIL"), cmd.OutOrStdout(), cmd.OutOrStderr())
+	if err != nil {
+		panic(err)
+	}
+
+	return ctx
 }

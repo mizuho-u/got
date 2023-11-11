@@ -27,7 +27,11 @@ to quickly create a Cobra application.`,
 			path = os.Args[2]
 		}
 
-		os.Exit(int(usecase.InitDir(mustNewContext(path, cmd))))
+		ctx := mustNewContext(path, cmd)
+		status := int(usecase.InitDir(ctx))
+		ctx.Close()
+
+		os.Exit(status)
 	},
 }
 
