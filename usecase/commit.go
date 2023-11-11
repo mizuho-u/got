@@ -9,7 +9,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Commit(ctx GotContext, commitMessage string, now time.Time) error {
+func Commit(ctx GotContextReaderWriter, commitMessage string, now time.Time) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()

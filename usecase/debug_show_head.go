@@ -5,7 +5,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func ShowHead(ctx GotContext, paths ...string) error {
+func ShowHead(ctx GotContextReaderWriter, paths ...string) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()

@@ -12,15 +12,30 @@ import (
 )
 
 type GotContext interface {
+	GotContextReader
+	GotContextWriter
+	GotContextCloser
+}
+
+type GotContextReader interface {
 	context.Context
 	WorkspaceRoot() string
 	GotRoot() string
 	Username() string
 	Email() string
+}
 
+type GotContextWriter interface {
 	Out(string, ColorAttribute) error
 	OutError(error) error
+}
 
+type GotContextReaderWriter interface {
+	GotContextReader
+	GotContextWriter
+}
+
+type GotContextCloser interface {
 	Close() error
 }
 

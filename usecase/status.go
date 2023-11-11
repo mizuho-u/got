@@ -8,7 +8,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Status(ctx GotContext, porcelain bool) error {
+func Status(ctx GotContextReaderWriter, porcelain bool) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()

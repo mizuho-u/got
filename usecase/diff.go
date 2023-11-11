@@ -8,7 +8,7 @@ import (
 	"github.com/mizuho-u/got/model"
 )
 
-func Diff(ctx GotContext, staged bool) error {
+func Diff(ctx GotContextReaderWriter, staged bool) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 	defer db.Close()

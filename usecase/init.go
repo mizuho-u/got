@@ -6,7 +6,7 @@ import (
 
 type ExitCode int
 
-func InitDir(ctx GotContext) error {
+func InitDir(ctx GotContextReaderWriter) error {
 
 	var db database.Database = database.NewFSDB(ctx.WorkspaceRoot(), ctx.GotRoot())
 
