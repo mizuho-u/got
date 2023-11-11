@@ -155,6 +155,30 @@ func TestAddUnreadbleFiles(t *testing.T) {
 	}
 
 }
+
+func TestAddRelativePath(t *testing.T) {
+
+	build := buildpath(t)
+
+	tempdir := initDir(t, build)
+
+	createFile(t, tempdir, "hello.txt", []byte("hello.\n"))
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.Chdir(tempdir)
+
+	add(t, build, ".")
+
+	os.Chdir(wd)
+
+	testlsfiles(t, tempdir, "hello.txt\n")
+
+}
+
 func testlsfiles(t *testing.T, dir string, expect string) {
 
 	t.Helper()

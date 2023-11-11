@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 
+	"github.com/mizuho-u/got/internal"
 	"github.com/mizuho-u/got/usecase"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +26,14 @@ to quickly create a Cobra application.`,
 
 		workspace, _ := cmd.Flags().GetString("path")
 		ctx := mustNewContext(workspace, cmd)
+
+		args, err := internal.MapE(args, func(p string) (string, error) {
+			return filepath.Abs(p)
+		})
+
+		if err != nil {
+			os.Exit(128)
+		}
 
 		status := int(usecase.Add(ctx, args...))
 

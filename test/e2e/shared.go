@@ -81,6 +81,18 @@ func initDir(t *testing.T, build string) string {
 	return tempdir
 }
 
+func add(t *testing.T, build string, args ...string) {
+
+	arg := []string{"add"}
+	arg = append(arg, args...)
+
+	out, err := exec.Command(build, arg...).CombinedOutput()
+	if err != nil {
+		t.Fatal("add files failed ", string(out))
+	}
+
+}
+
 func executeCmd(t *testing.T, cmd string) string {
 
 	t.Helper()
