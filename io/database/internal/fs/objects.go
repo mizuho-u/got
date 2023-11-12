@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mizuho-u/got/model"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 type Objects struct {
@@ -139,7 +139,7 @@ func (s *Objects) StoreAll(objects ...object.Object) error {
 
 }
 
-func (s *Objects) ScanTree(oid string) model.TreeScanner {
+func (s *Objects) ScanTree(oid string) repository.TreeScanner {
 	return newTreeScanner(s.gotpath, oid)
 }
 
@@ -161,7 +161,7 @@ type treeEntry struct {
 	io.Reader
 }
 
-func (ts *treeScanner) Walk(f func(name string, obj model.TreeEntry)) {
+func (ts *treeScanner) Walk(f func(name string, obj repository.TreeEntry)) {
 
 	if ts.rootTree == "" {
 		return
@@ -170,7 +170,7 @@ func (ts *treeScanner) Walk(f func(name string, obj model.TreeEntry)) {
 	ts.walk(ts.rootTree, "", f)
 }
 
-func (ts *treeScanner) walk(oid, path string, f func(name string, obj model.TreeEntry)) {
+func (ts *treeScanner) walk(oid, path string, f func(name string, obj repository.TreeEntry)) {
 
 	o, err := ts.load(oid)
 	if err != nil {

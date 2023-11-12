@@ -3,7 +3,7 @@ package object_test
 import (
 	"testing"
 
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 func TestFlatTree(t *testing.T) {

@@ -1,4 +1,4 @@
-package model
+package repository
 
 import (
 	"bytes"
@@ -7,8 +7,8 @@ import (
 	"io"
 	"sort"
 
-	"github.com/mizuho-u/got/model/internal"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository/internal"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 const (

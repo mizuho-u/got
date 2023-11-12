@@ -1,4 +1,4 @@
-package model
+package repository
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/mizuho-u/got/internal"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 type repository struct {

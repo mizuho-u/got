@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"github.com/mizuho-u/got/io/database"
-	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/repository"
 )
 
 func ShowHead(ctx GotContextReaderWriter, paths ...string) error {
@@ -20,7 +20,7 @@ func ShowHead(ctx GotContextReaderWriter, paths ...string) error {
 		tree = head.Tree()
 	}
 
-	db.Objects().ScanTree(tree).Walk(func(name string, entry model.TreeEntry) {
+	db.Objects().ScanTree(tree).Walk(func(name string, entry repository.TreeEntry) {
 		if entry.IsTree() {
 			return
 		}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/mizuho-u/got/io/database"
 	"github.com/mizuho-u/got/io/workspace"
-	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/repository"
 )
 
 func Status(ctx GotContextReaderWriter, porcelain bool) error {
@@ -18,12 +18,12 @@ func Status(ctx GotContextReaderWriter, porcelain bool) error {
 		return err
 	}
 
-	opt := []model.WorkspaceOption{}
+	opt := []repository.WorkspaceOption{}
 	if !db.Index().IsNew() {
-		opt = append(opt, model.WithIndex(db.Index()))
+		opt = append(opt, repository.WithIndex(db.Index()))
 	}
 
-	repo, err := model.NewRepository(opt...)
+	repo, err := repository.NewRepository(opt...)
 	if err != nil {
 		return err
 	}

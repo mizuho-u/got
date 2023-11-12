@@ -1,8 +1,8 @@
 package database
 
 import (
-	"github.com/mizuho-u/got/model"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 type Database interface {
@@ -20,14 +20,14 @@ type refs interface {
 
 type objects interface {
 	Store(objects ...object.Object) error
-	ScanTree(oid string) model.TreeScanner
+	ScanTree(oid string) repository.TreeScanner
 	Load(oid string) (object.Object, error)
 }
 
 type index interface {
 	OpenForUpdate() error
 	OpenForRead() error
-	Update(index model.Index) error
+	Update(index repository.Index) error
 	Read(p []byte) (n int, err error)
 	LoadObject(oid string) (object.Object, error)
 	IsNew() bool

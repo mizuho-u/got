@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/mizuho-u/got/model"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 type Index struct {
@@ -53,7 +53,7 @@ func (i *Index) OpenForRead() error {
 	}
 }
 
-func (i *Index) Update(index model.Index) error {
+func (i *Index) Update(index repository.Index) error {
 
 	content, err := index.Serialize()
 	if err != nil {

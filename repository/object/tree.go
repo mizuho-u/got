@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mizuho-u/got/model/internal"
+	"github.com/mizuho-u/got/repository/internal"
 )
 
 type Permission string

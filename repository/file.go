@@ -1,11 +1,11 @@
-package model
+package repository
 
 import (
 	"io/fs"
 	"syscall"
 
-	"github.com/mizuho-u/got/model/internal"
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository/internal"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 type File struct {

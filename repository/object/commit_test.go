@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 func TestCreateCommitObject(t *testing.T) {

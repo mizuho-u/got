@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/mizuho-u/got/io/database"
-	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/repository"
 )
 
 func Commit(ctx GotContextReaderWriter, commitMessage string, now time.Time) error {
@@ -19,7 +19,7 @@ func Commit(ctx GotContextReaderWriter, commitMessage string, now time.Time) err
 		return err
 	}
 
-	repo, err := model.NewRepository(model.WithIndex(db.Index()))
+	repo, err := repository.NewRepository(repository.WithIndex(db.Index()))
 	if err != nil {
 		return err
 	}

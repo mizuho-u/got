@@ -1,11 +1,11 @@
-package model
+package repository
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/mizuho-u/got/model/internal"
+	"github.com/mizuho-u/got/repository/internal"
 )
 
 func TestAddEntry(t *testing.T) {

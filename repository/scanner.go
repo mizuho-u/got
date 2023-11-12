@@ -1,9 +1,9 @@
-package model
+package repository
 
 import (
 	"io"
 
-	"github.com/mizuho-u/got/model/object"
+	"github.com/mizuho-u/got/repository/object"
 )
 
 type WorkspaceScanner interface {

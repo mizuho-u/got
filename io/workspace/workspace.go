@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/mizuho-u/got/internal"
-	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/repository"
 )
 
 type fileScanner struct {
@@ -40,7 +40,7 @@ func Scan(rootDir, name, ignore string) (*fileScanner, error) {
 }
 
 // Next エントリをひとつ返す。最後はnil
-func (fs *fileScanner) Next() (model.WorkspaceEntry, error) {
+func (fs *fileScanner) Next() (repository.WorkspaceEntry, error) {
 
 	if f, err := fs.files.Dequeue(); err == nil {
 		return f, nil
@@ -95,7 +95,7 @@ func (fs *fileScanner) enqueueFile(dir string, info fs.FileInfo) error {
 		return err
 	}
 
-	fs.files.Enqueue(&file{name: path, size: info.Size(), stats: model.NewFileStat(statt), ReadSeeker: reader})
+	fs.files.Enqueue(&file{name: path, size: info.Size(), stats: repository.NewFileStat(statt), ReadSeeker: reader})
 
 	return nil
 }
@@ -103,7 +103,7 @@ func (fs *fileScanner) enqueueFile(dir string, info fs.FileInfo) error {
 type file struct {
 	name  string
 	size  int64
-	stats *model.FileStat
+	stats *repository.FileStat
 	io.ReadSeeker
 }
 
@@ -132,6 +132,6 @@ func (f *file) Parents() []string {
 
 }
 
-func (f *file) Stats() *model.FileStat {
+func (f *file) Stats() *repository.FileStat {
 	return f.stats
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/mizuho-u/got/io/database"
 	"github.com/mizuho-u/got/io/workspace"
-	"github.com/mizuho-u/got/model"
+	"github.com/mizuho-u/got/repository"
 )
 
 func Diff(ctx GotContextReaderWriter, staged bool) error {
@@ -18,14 +18,14 @@ func Diff(ctx GotContextReaderWriter, staged bool) error {
 		return err
 	}
 
-	opt := []model.WorkspaceOption{}
+	opt := []repository.WorkspaceOption{}
 	if !db.Index().IsNew() {
-		opt = append(opt, model.WithIndex(db.Index()))
+		opt = append(opt, repository.WithIndex(db.Index()))
 	}
 
-	opt = append(opt, model.WithObjectLoader(db.Objects()))
+	opt = append(opt, repository.WithObjectLoader(db.Objects()))
 
-	repo, err := model.NewRepository(opt...)
+	repo, err := repository.NewRepository(opt...)
 	if err != nil {
 		return err
 	}
@@ -63,9 +63,9 @@ func Diff(ctx GotContextReaderWriter, staged bool) error {
 
 				color := none
 				switch edit.Diff() {
-				case model.Deletion:
+				case repository.Deletion:
 					color = red
-				case model.Insertion:
+				case repository.Insertion:
 					color = green
 				default:
 				}
