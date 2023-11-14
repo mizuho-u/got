@@ -5,9 +5,11 @@ import (
 	"compress/zlib"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mizuho-u/got/repository"
 	"github.com/mizuho-u/got/repository/object"
@@ -74,6 +76,40 @@ func isExist(path string) bool {
 
 	return false
 
+}
+
+func loadPrefix(gotroot, prefix string) ([]object.Object, error) {
+
+	objects := []object.Object{}
+	err := filepath.Walk(filepath.Join(gotroot, "objects", prefix[0:2]), func(path string, info fs.FileInfo, err error) error {
+
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		oid := prefix[0:2] + filepath.Base(path)
+
+		if strings.HasPrefix(oid, prefix) {
+			o, err := load(gotroot, oid)
+			if err != nil {
+				return err
+			}
+
+			objects = append(objects, o)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return objects, nil
 }
 
 func (s *Objects) create(path string, data []byte) error {
@@ -145,6 +181,20 @@ func (s *Objects) ScanTree(oid string) repository.TreeScanner {
 
 func (s *Objects) Load(oid string) (object.Object, error) {
 	return load(s.gotpath, oid)
+}
+
+func (s *Objects) LoadPrefix(oid string) ([]object.Object, error) {
+	return loadPrefix(s.gotpath, oid)
+}
+
+func (s *Objects) LoadCommit(oid string) (object.Commit, error) {
+
+	o, err := load(s.gotpath, oid)
+	if err != nil {
+		return nil, err
+	}
+
+	return object.ParseCommit(o)
 }
 
 type treeScanner struct {

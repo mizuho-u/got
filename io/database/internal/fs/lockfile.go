@@ -33,6 +33,7 @@ func (l *lockfile) Commit() error {
 	defer l.lockfile.Close()
 
 	if err := os.Rename(l.lockfile.Name(), l.filepath); err != nil {
+		os.Remove(l.lockfile.Name())
 		return err
 	}
 

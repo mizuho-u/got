@@ -16,7 +16,7 @@ func TestCreateCommitObject(t *testing.T) {
 	now := time.Unix(1511204319, 0).UTC()
 
 	author := object.NewAuthor(name, email, now)
-	commit, err := object.NewCommit("", tree, author.String(), "First commit.\n")
+	commit, err := object.NewCommit("", tree, author, "First commit.\n")
 	if err != nil {
 		t.Fatal("failed to create commit. ", err)
 	}

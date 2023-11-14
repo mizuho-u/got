@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/mizuho-u/got/io/database/internal/fs"
+	"github.com/mizuho-u/got/types"
 )
 
 type fsdb struct {
@@ -25,22 +26,27 @@ func (f *fsdb) Init() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Join(f.gotroot, "refs"), os.ModeDir|0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(f.gotroot, "refs/heads"), os.ModeDir|0755); err != nil {
 		return err
 	}
 
-	if err := fs.NewRefs(f.gotroot).UpdateHEAD("ref: refs/heads/main"); err != nil {
+	if err := f.refs.UpdateRef("main", ""); err != nil {
+		return err
+	}
+
+	ref, _ := types.NewBranchName("main")
+	if err := f.refs.UpdateHeadRef(ref); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (fs *fsdb) Refs() refs {
+func (fs *fsdb) Refs() Refs {
 	return fs.refs
 }
 
-func (fs *fsdb) Objects() objects {
+func (fs *fsdb) Objects() Objects {
 	return fs.objects
 }
 

@@ -40,7 +40,7 @@ func Commit(ctx GotContextReaderWriter, commitMessage string, now time.Time) err
 		return err
 	}
 
-	if err := db.Refs().UpdateHEAD(commitId); err != nil {
+	if err := db.Refs().UpdateHeadCommit(commitId); err != nil {
 		return err
 	}
 

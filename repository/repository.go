@@ -139,7 +139,7 @@ func (repo *repository) Commit(parent, author, email, message string, now time.T
 	})
 
 	a := object.NewAuthor(author, email, now)
-	commit, err := object.NewCommit(parent, root.OID(), a.String(), message)
+	commit, err := object.NewCommit(parent, root.OID(), a, message)
 	if err != nil {
 		return commitId, objects, err
 	}
