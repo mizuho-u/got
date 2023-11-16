@@ -25,6 +25,8 @@ to quickly create a Cobra application.`,
 		var path string
 		if len(os.Args) == 3 {
 			path = os.Args[2]
+		} else {
+			path, _ = cmd.Flags().GetString("path")
 		}
 
 		ctx := mustNewContext(path, cmd)
