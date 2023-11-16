@@ -61,6 +61,11 @@ func NewTreeEntry(filepath string, permission Permission, oid string) TreeEntry 
 	return &treeEntry{filepath: filepath, perm: permission, oid: oid}
 }
 
+type Tree interface {
+	TreeEntry
+	ChildrenMap() map[string]TreeEntry
+}
+
 type tree struct {
 	*object
 	full     string
@@ -89,7 +94,7 @@ func BuildTree(entries []TreeEntry) (*tree, error) {
 
 func ParseTree(o Object) (*tree, error) {
 
-	root := &tree{children: []TreeEntry{}}
+	root := &tree{children: []TreeEntry{}, index: map[string]int{}}
 
 	buf := bytes.NewBuffer(o.Data())
 
@@ -109,6 +114,7 @@ func ParseTree(o Object) (*tree, error) {
 
 		oid := internal.Unpack(buf.Next(20))
 
+		root.index[filepath] = len(root.index)
 		if p := Permission(perm); p == Directory {
 			root.children = append(root.children, &tree{children: []TreeEntry{}, base: filepath, object: &object{id: oid}})
 		} else {
@@ -237,6 +243,16 @@ func (t *tree) IsTree() bool {
 
 func (t *tree) Children() []TreeEntry {
 	return t.children
+}
+
+func (t *tree) ChildrenMap() map[string]TreeEntry {
+
+	m := map[string]TreeEntry{}
+	for name, i := range t.index {
+		m[name] = t.children[i]
+	}
+
+	return m
 }
 
 func pack(oid string) ([]byte, error) {

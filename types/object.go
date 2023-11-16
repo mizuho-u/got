@@ -4,6 +4,8 @@ import "fmt"
 
 type ObjectID string
 
+const NullObjectID ObjectID = ""
+
 func NewObjectID(s string) (ObjectID, error) {
 
 	if len(s) != 40 {
