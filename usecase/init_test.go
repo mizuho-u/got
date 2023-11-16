@@ -40,8 +40,8 @@ func TestInitDir(t *testing.T) {
 		t.Error(".git/refs dir not exists.", err)
 	}
 
-	if out.String() != "Initialized empty Jit repository in "+dir {
-		t.Errorf("expect outputmsg \"%s\" got %s", "Initialized empty Jit repository in "+dir, out.String())
+	if out.String() != "Initialized empty Got repository in "+dir {
+		t.Errorf("expect outputmsg \"%s\" got %s", "Initialized empty Git repository in "+dir, out.String())
 	}
 
 }

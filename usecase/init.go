@@ -14,7 +14,7 @@ func InitDir(ctx GotContextReaderWriter) error {
 		return err
 	}
 
-	ctx.Out("Initialized empty Jit repository in "+ctx.WorkspaceRoot(), none)
+	ctx.Out("Initialized empty Got repository in "+ctx.WorkspaceRoot(), none)
 
 	return nil
 }

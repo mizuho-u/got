@@ -18,18 +18,18 @@ func TestInit(t *testing.T) {
 			description: "no args",
 			path: func(t testing.TB) string {
 				t.Cleanup(func() {
-					os.RemoveAll(".got")
+					os.RemoveAll(".git")
 				})
 				return ""
 			},
-			expect: `Initialized empty Jit repository in .+`,
+			expect: `Initialized empty Got repository in .+`,
 		},
 		{
 			description: "provide a abs path",
 			path: func(t testing.TB) string {
 				return t.TempDir()
 			},
-			expect: `Initialized empty Jit repository in .+`,
+			expect: `Initialized empty Got repository in .+`,
 		},
 	}
 
@@ -40,7 +40,7 @@ func TestInit(t *testing.T) {
 
 			out, err := exec.Command(build, "init", tc.path(t)).Output()
 			if err != nil {
-				t.Fatal("exec got command failed ", err)
+				t.Fatal("exec got command failed ", err, out)
 			}
 
 			if !regexp.MustCompile(tc.expect).MatchString(string(out)) {
