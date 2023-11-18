@@ -103,28 +103,25 @@ func (td *treeDiff) detectDeletion(a, b map[string]object.TreeEntry, prefix stri
 
 		bChild, ok := b[basename]
 
-		if ok && aChild.OID() == bChild.OID() {
+		if ok && (aChild.OID() == bChild.OID() && aChild.Permission() == bChild.Permission()) {
 			continue
 		}
 
 		path := filepath.Join(prefix, basename)
 
 		// tree
-		if ok {
+		a := types.NullObjectID
+		if aChild.IsTree() {
+			a = types.ObjectID(aChild.OID())
+		}
 
-			a := types.NullObjectID
-			if aChild.IsTree() {
-				a = types.ObjectID(aChild.OID())
-			}
+		b := types.NullObjectID
+		if ok && bChild.IsTree() {
+			b = types.ObjectID(bChild.OID())
+		}
 
-			b := types.NullObjectID
-			if bChild.IsTree() {
-				b = types.ObjectID(bChild.OID())
-			}
-
-			if err := td.compare(a, b, path); err != nil {
-				return err
-			}
+		if err := td.compare(a, b, path); err != nil {
+			return err
 		}
 
 		// blob
