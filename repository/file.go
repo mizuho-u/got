@@ -2,9 +2,7 @@ package repository
 
 import (
 	"io/fs"
-	"syscall"
 
-	"github.com/mizuho-u/got/repository/internal"
 	"github.com/mizuho-u/got/repository/object"
 )
 
@@ -28,26 +26,6 @@ type FileStat struct {
 	size                                 uint32
 }
 
-func NewFileStat(stat *syscall.Stat_t) *FileStat {
-
-	cspec := internal.Ctimespec(stat)
-	mspec := internal.Mtimespec(stat)
-
-	return &FileStat{
-		ctime:      uint32(cspec.Sec),
-		ctime_nsec: uint32(cspec.Nsec),
-		mtime:      uint32(mspec.Sec),
-		mtime_nsec: uint32(mspec.Nsec),
-		dev:        uint32(stat.Dev),
-		ino:        uint32(stat.Ino),
-		mode:       uint32(stat.Mode),
-		uid:        uint32(stat.Uid),
-		gid:        uint32(stat.Gid),
-		size:       uint32(stat.Size),
-	}
-
-}
-
 func (s *FileStat) permission() object.Permission {
 
 	if (s.mode & 0111) == 0111 {
@@ -56,4 +34,19 @@ func (s *FileStat) permission() object.Permission {
 
 	return object.RegularFile
 
+}
+
+func NewFileStat(ctime, ctime_nsec, mtime, mtime_nsec, dev, ino, mode, uid, gid, size uint32) *FileStat {
+	return &FileStat{
+		ctime:      uint32(ctime),
+		ctime_nsec: uint32(ctime_nsec),
+		mtime:      uint32(mtime),
+		mtime_nsec: uint32(mtime_nsec),
+		dev:        uint32(dev),
+		ino:        uint32(ino),
+		mode:       uint32(mode),
+		uid:        uint32(uid),
+		gid:        uint32(gid),
+		size:       uint32(size),
+	}
 }

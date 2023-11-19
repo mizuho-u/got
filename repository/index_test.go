@@ -41,13 +41,13 @@ func TestAddEntry(t *testing.T) {
 
 		t.Run(tc.description, func(t *testing.T) {
 
-			index, _ := newIndex()
+			index, _ := NewIndex()
 
 			for _, f := range tc.add {
-				index.add(NewIndexEntry(f, "", &FileStat{}))
+				index.Add(NewIndexEntry(f, "", &FileStat{}))
 			}
 
-			got := internal.Map(index.entries, func(v *indexEntry) string { return v.filename })
+			got := internal.Map(index.entries, func(v *IndexEntry) string { return v.filename })
 
 			if diff := cmp.Diff(got, tc.expect, cmpopts.SortSlices(func(i, j string) bool { return i < j })); diff != "" {
 				t.Errorf("serialized index not match. %s", diff)

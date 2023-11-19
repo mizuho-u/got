@@ -29,7 +29,7 @@ func WithIndex(data io.Reader) WorkspaceOption {
 
 	return func(w *repository) error {
 
-		index, err := newIndex(indexSource(data))
+		index, err := NewIndex(IndexSource(data))
 		if err != nil {
 			return nil
 		}
@@ -51,7 +51,7 @@ func WithObjectLoader(l ObjectLoader) WorkspaceOption {
 
 func NewRepository(options ...WorkspaceOption) (*repository, error) {
 
-	index, err := newIndex()
+	index, err := NewIndex()
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (repo *repository) Add(scanner WorkspaceScanner) (objects []object.Object, 
 		}
 		objects = append(objects, blob)
 
-		repo.index.add(NewIndexEntry(f.Name(), blob.OID(), f.Stats()))
+		repo.index.Add(NewIndexEntry(f.Name(), blob.OID(), f.Stats()))
 
 	}
 

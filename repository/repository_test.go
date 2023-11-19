@@ -10,11 +10,11 @@ import (
 func TestCommitRepository(t *testing.T) {
 
 	// arrange
-	index, err := newIndex()
+	index, err := NewIndex()
 	if err != nil {
 		t.Fatal(err)
 	}
-	index.add(NewIndexEntry("hello.txt", "5ab2f8a4323abafb10abb68657d9d39f1a775057", &FileStat{mode: 0644}))
+	index.Add(NewIndexEntry("hello.txt", "5ab2f8a4323abafb10abb68657d9d39f1a775057", &FileStat{mode: 0644}))
 
 	b, err := index.Serialize()
 	if err != nil {

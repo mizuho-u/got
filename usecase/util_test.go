@@ -117,6 +117,14 @@ func removeAll(t testing.TB, dir, name string) {
 
 }
 
+func exists(dir, name string) bool {
+
+	_, err := os.Stat(filepath.Join(dir, name))
+
+	return err == nil
+
+}
+
 func newContext(dir, username, email string, out, outErr io.Writer) usecase.GotContext {
 	return usecase.NewContext(context.Background(), dir, ".git", username, email, out, outErr)
 }

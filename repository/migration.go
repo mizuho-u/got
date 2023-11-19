@@ -24,10 +24,11 @@ type migration struct {
 	rmdirs  internal.Set[string]
 	ws      Workspace
 	db      Database
+	index   IndexWriter
 }
 
-func NewMigration(diff map[string]pair, ws Workspace, db Database) *migration {
-	return &migration{diff: diff, changes: make(migrationChanges), mkdirs: internal.NewSet[string](), rmdirs: internal.NewSet[string](), ws: ws, db: db}
+func NewMigration(diff map[string]pair, ws Workspace, db Database, index IndexWriter) *migration {
+	return &migration{diff: diff, changes: make(migrationChanges), mkdirs: internal.NewSet[string](), rmdirs: internal.NewSet[string](), ws: ws, db: db, index: index}
 }
 
 func (m *migration) ApplyChanges() error {
@@ -37,6 +38,10 @@ func (m *migration) ApplyChanges() error {
 	}
 
 	if err := m.updateWorkspace(); err != nil {
+		return err
+	}
+
+	if err := m.updateIndex(); err != nil {
 		return err
 	}
 
@@ -62,7 +67,6 @@ func (m *migration) planChanges() error {
 
 		} else {
 
-			m.mkdirs.Merge(dirs)
 			m.changes[migrateUpdate] = append(m.changes[migrateUpdate], internal.NewTuple(path, pair.Item2()))
 
 		}
@@ -207,6 +211,32 @@ func (m *migration) createWorkspaceFiles() error {
 			return err
 		}
 
+	}
+
+	return nil
+
+}
+
+func (m *migration) updateIndex() error {
+
+	for _, change := range m.changes[migrateDelete] {
+		m.index.Delete(change.Item1())
+	}
+
+	for _, change := range m.changes[migrateCreate] {
+		stat, err := m.ws.Stat(change.Item1())
+		if err != nil {
+			return err
+		}
+		m.index.Add(NewIndexEntry(change.Item1(), change.Item2().OID(), stat.Stats()))
+	}
+
+	for _, change := range m.changes[migrateUpdate] {
+		stat, err := m.ws.Stat(change.Item1())
+		if err != nil {
+			return err
+		}
+		m.index.Add(NewIndexEntry(change.Item1(), change.Item2().OID(), stat.Stats()))
 	}
 
 	return nil

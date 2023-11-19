@@ -23,5 +23,6 @@ type WorkspaceFile interface {
 }
 
 type WorkspaceFileStat interface {
+	Stats() *FileStat
 	IsDir() bool
 }

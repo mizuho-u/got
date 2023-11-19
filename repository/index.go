@@ -17,19 +17,32 @@ const (
 )
 
 type Index interface {
-	Serialize() ([]byte, error)
+	IndexSerializable
+	IndexWriter
 	tracked(name string) bool
 	match(e WorkspaceEntry) bool
 }
 
+type IndexSerializable interface {
+	Serialize() ([]byte, error)
+}
+
+type IndexWriter interface {
+	Add(entries ...*IndexEntry)
+	Delete(entry string)
+}
+
+type IndexReader interface {
+}
+
 type index struct {
-	entries map[string]*indexEntry
+	entries map[string]*IndexEntry
 	parents map[string]map[string]struct{}
 }
 
 type indexOption func(*index) error
 
-func indexSource(data io.Reader) indexOption {
+func IndexSource(data io.Reader) indexOption {
 
 	return func(index *index) error {
 
@@ -47,7 +60,7 @@ func indexSource(data io.Reader) indexOption {
 		}
 		checksum.Write(rawEntries)
 
-		index.add(entries...)
+		index.Add(entries...)
 
 		digest, err := io.ReadAll(data)
 		if err != nil {
@@ -64,9 +77,9 @@ func indexSource(data io.Reader) indexOption {
 
 }
 
-func newIndex(opts ...indexOption) (*index, error) {
+func NewIndex(opts ...indexOption) (*index, error) {
 
-	i := &index{entries: map[string]*indexEntry{}, parents: map[string]map[string]struct{}{}}
+	i := &index{entries: map[string]*IndexEntry{}, parents: map[string]map[string]struct{}{}}
 
 	for _, opt := range opts {
 		if err := opt(i); err != nil {
@@ -114,7 +127,7 @@ func parseHeader(data io.Reader) (raw []byte, signature string, version uint32, 
 	return
 }
 
-func parseEntries(data io.Reader, count uint32) (raw []byte, entries []*indexEntry, err error) {
+func parseEntries(data io.Reader, count uint32) (raw []byte, entries []*IndexEntry, err error) {
 
 	for i := uint32(0); i < count; i++ {
 
@@ -153,7 +166,7 @@ func readOneEntry(data io.Reader) ([]byte, error) {
 
 }
 
-func (i *index) add(entries ...*indexEntry) {
+func (i *index) Add(entries ...*IndexEntry) {
 
 	for _, entry := range entries {
 		i.discardConflicts(entry)
@@ -162,7 +175,7 @@ func (i *index) add(entries ...*indexEntry) {
 
 }
 
-func (i *index) discardConflicts(e *indexEntry) {
+func (i *index) discardConflicts(e *IndexEntry) {
 
 	// replacing a file with a directory
 	for _, parentDir := range internal.ParentDirs(e.filename) {
@@ -179,10 +192,17 @@ func (i *index) discardConflicts(e *indexEntry) {
 	}
 }
 
-func (i *index) storeEntry(e *indexEntry) {
+func (i *index) storeEntry(e *IndexEntry) {
 
 	i.entries[e.filename] = e
 	i.storeParent(e.filename)
+
+}
+
+func (i *index) Delete(entry string) {
+
+	i.deleteEntry(entry)
+	i.deleteChildren(entry)
 
 }
 
@@ -209,6 +229,19 @@ func (i *index) deleteParent(filename string) {
 
 	for _, p := range internal.ParentDirs(filename) {
 		delete(i.parents[p], filename)
+	}
+
+}
+
+func (i *index) deleteChildren(parent string) {
+
+	p, ok := i.parents[parent]
+	if !ok {
+		return
+	}
+
+	for child := range p {
+		i.deleteEntry(child)
 	}
 
 }
@@ -296,16 +329,15 @@ func (i *index) match(e WorkspaceEntry) bool {
 
 }
 
-type indexEntry struct {
+type IndexEntry struct {
 	filename string
 	oid      string
 	stat     *FileStat
-	loader   IndexLoader
 }
 
-func NewIndexEntry(name, oid string, stat *FileStat) *indexEntry {
+func NewIndexEntry(name, oid string, stat *FileStat) *IndexEntry {
 
-	return &indexEntry{
+	return &IndexEntry{
 		filename: name,
 		oid:      oid,
 		stat:     stat,
@@ -313,7 +345,7 @@ func NewIndexEntry(name, oid string, stat *FileStat) *indexEntry {
 
 }
 
-func parseIndexEntry(entry []byte) *indexEntry {
+func parseIndexEntry(entry []byte) *IndexEntry {
 
 	fstat := parseFileStat(entry[0:40])
 
@@ -361,7 +393,7 @@ const block = 8
 const padding = 0x00
 const max_path_size = 4095
 
-func (ie *indexEntry) serialize() []byte {
+func (ie *IndexEntry) serialize() []byte {
 
 	content := []byte{}
 
@@ -395,11 +427,11 @@ func (ie *indexEntry) serialize() []byte {
 
 }
 
-func (ie *indexEntry) permission() object.Permission {
+func (ie *IndexEntry) permission() object.Permission {
 	return ie.stat.permission()
 }
 
-func (ie *indexEntry) matchTimes(stat *FileStat) bool {
+func (ie *IndexEntry) matchTimes(stat *FileStat) bool {
 
 	return ie.stat.ctime == stat.ctime &&
 		ie.stat.ctime_nsec == stat.ctime_nsec &&
@@ -408,6 +440,6 @@ func (ie *indexEntry) matchTimes(stat *FileStat) bool {
 
 }
 
-func (ie *indexEntry) LoadObject() (object.Object, error) {
-	return ie.loader.LoadObject(ie.oid)
+func (ie *IndexEntry) Name() string {
+	return ie.filename
 }

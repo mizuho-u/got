@@ -131,6 +131,7 @@ func TestMigration(t *testing.T) {
 
 			ws := newWorkspace()
 			db := newDatabase()
+			index := newIndex()
 
 			ws.addRange(tc.a)
 
@@ -145,12 +146,25 @@ func TestMigration(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			m := repository.NewMigration(diff.Changes(), ws, db)
+			m := repository.NewMigration(diff.Changes(), ws, db, index)
 			if err := m.ApplyChanges(); err != nil {
 				t.Fatal(err)
 			}
 
 			ws.equals(t, tc.b)
+
+			// if len(index.entries) != len(tc.b) {
+			// 	t.Fatalf("expect %d index entries, got %d", len(tc.b), len(index.entries))
+			// }
+
+			// for f := range tc.b {
+
+			// 	_, ok := index.entries[f]
+			// 	if !ok {
+			// 		t.Errorf("%s not exists in index", f)
+			// 	}
+
+			// }
 
 		})
 

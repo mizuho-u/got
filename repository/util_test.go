@@ -236,6 +236,10 @@ func (s workspaceFileStat) IsDir() bool {
 	return bool(s)
 }
 
+func (s workspaceFileStat) Stats() *repository.FileStat {
+	return nil
+}
+
 var _ repository.Database = &database{}
 
 type database struct {
@@ -262,4 +266,26 @@ func (db *database) store(objects ...object.Object) {
 		db.objects[o.OID()] = o
 	}
 
+}
+
+var _ repository.IndexWriter = &index{}
+
+type index struct {
+	entries map[string]*repository.IndexEntry
+}
+
+func newIndex() *index {
+	return &index{map[string]*repository.IndexEntry{}}
+}
+
+func (i *index) Add(entries ...*repository.IndexEntry) {
+
+	for _, entry := range entries {
+		i.entries[entry.Name()] = entry
+	}
+
+}
+
+func (i *index) Delete(entry string) {
+	delete(i.entries, entry)
 }
