@@ -18,13 +18,16 @@ const (
 
 type Index interface {
 	IndexSerializable
-	IndexWriter
-	tracked(name string) bool
-	match(e WorkspaceEntry) bool
+	IndexWriteReader
 }
 
 type IndexSerializable interface {
 	Serialize() ([]byte, error)
+}
+
+type IndexWriteReader interface {
+	IndexWriter
+	IndexReader
 }
 
 type IndexWriter interface {
@@ -33,6 +36,11 @@ type IndexWriter interface {
 }
 
 type IndexReader interface {
+	Get(entry string) (*IndexEntry, bool)
+	Iter() map[string]*IndexEntry
+	tracked(name string) bool
+	match(e WorkspaceEntry) bool
+	match2(f WorkspaceFile) bool
 }
 
 type index struct {
@@ -329,6 +337,56 @@ func (i *index) match(e WorkspaceEntry) bool {
 
 }
 
+func (i *index) match2(f WorkspaceFile) bool {
+
+	info := f.Info()
+
+	entry, inEntries := i.entries[info.Path()]
+	if !inEntries {
+		return false
+	}
+
+	if entry.stat.size != uint32(info.Size()) {
+		return false
+	}
+
+	if entry.stat.mode != info.Stats().mode {
+		return false
+	}
+
+	if entry.matchTimes(info.Stats()) {
+		return true
+	}
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return false
+	}
+
+	blod, err := object.NewBlob(info.Name(), data)
+	if err != nil {
+		return false
+	}
+
+	if entry.oid != blod.OID() {
+		return false
+	}
+
+	entry.stat = info.Stats()
+
+	return true
+
+}
+
+func (i *index) Get(entry string) (*IndexEntry, bool) {
+	e, ok := i.entries[entry]
+	return e, ok
+}
+
+func (i *index) Iter() map[string]*IndexEntry {
+	return i.entries
+}
+
 type IndexEntry struct {
 	filename string
 	oid      string
@@ -428,7 +486,7 @@ func (ie *IndexEntry) serialize() []byte {
 }
 
 func (ie *IndexEntry) permission() object.Permission {
-	return ie.stat.permission()
+	return ie.stat.Permission()
 }
 
 func (ie *IndexEntry) matchTimes(stat *FileStat) bool {

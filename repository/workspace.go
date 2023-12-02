@@ -12,17 +12,22 @@ type Workspace interface {
 	CreateDir(dir string) error
 	CreateFile(file string) (WorkspaceFile, error)
 	Stat(entry string) (WorkspaceFileStat, error)
+	ListDir(dir string) ([]WorkspaceFileStat, error)
 	Open(f string) (WorkspaceFile, error)
 }
 
 type WorkspaceFile interface {
 	io.WriteCloser
 	io.ReadCloser
-	Permission() object.Permission
 	Chmod(p object.Permission) error
+	Info() WorkspaceFileStat
 }
 
 type WorkspaceFileStat interface {
 	Stats() *FileStat
 	IsDir() bool
+	Name() string
+	Path() string
+	Size() int64
+	Permission() object.Permission
 }

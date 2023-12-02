@@ -26,14 +26,17 @@ type FileStat struct {
 	size                                 uint32
 }
 
-func (s *FileStat) permission() object.Permission {
+func (s *FileStat) Permission() object.Permission {
+
+	if fs.FileMode(s.mode).IsDir() {
+		return object.Directory
+	}
 
 	if (s.mode & 0111) == 0111 {
 		return object.ExecutableFile
 	}
 
 	return object.RegularFile
-
 }
 
 func NewFileStat(ctime, ctime_nsec, mtime, mtime_nsec, dev, ino, mode, uid, gid, size uint32) *FileStat {

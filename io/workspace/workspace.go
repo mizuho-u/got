@@ -154,6 +154,10 @@ func (ws *workspace) abs(path string) string {
 	return filepath.Join(ws.root, path)
 }
 
+func (ws *workspace) rel(path string) (string, error) {
+	return filepath.Rel(ws.root, path)
+}
+
 func (ws *workspace) RemoveFile(file string) error {
 	return os.Remove(ws.abs(file))
 }
@@ -173,12 +177,7 @@ func (ws *workspace) CreateFile(file string) (repository.WorkspaceFile, error) {
 		return nil, err
 	}
 
-	stat, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	return &workspaceFile{f, statToPermission(stat)}, nil
+	return newWorkspaceFile(ws.root, f)
 }
 
 func (ws *workspace) Stat(entry string) (repository.WorkspaceFileStat, error) {
@@ -188,14 +187,62 @@ func (ws *workspace) Stat(entry string) (repository.WorkspaceFileStat, error) {
 		return nil, err
 	}
 
-	statt, ok := stat.Sys().(*syscall.Stat_t)
-	if !ok {
-		return nil, errors.New("failed to get statt")
+	return newWorkspaceFileStat(ws.root, stat)
+}
+
+func (ws *workspace) ListDir(dir string) ([]repository.WorkspaceFileStat, error) {
+
+	entries, err := os.ReadDir(ws.abs(dir))
+	if err != nil {
+		return nil, err
 	}
 
-	fileStat := newFileStat(statt)
+	stats := []repository.WorkspaceFileStat{}
+	for _, e := range entries {
 
-	return &workspaceFileStat{stat, fileStat}, nil
+		info, err := e.Info()
+		if err != nil {
+			return nil, err
+		}
+
+		stat, err := newWorkspaceFileStat(filepath.Join(dir, info.Name()), info)
+
+		if err != nil {
+			return nil, err
+		}
+
+		stats = append(stats, stat)
+	}
+
+	return stats, nil
+
+}
+
+func (ws *workspace) Walk(dir string, walkFunc func(file repository.WorkspaceFile) error) error {
+
+	return filepath.WalkDir(ws.abs(dir), func(path string, d fs.DirEntry, err error) error {
+
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		rel, err := ws.rel(path)
+		if err != nil {
+			return err
+		}
+
+		file, err := ws.Open(rel)
+		if err != nil {
+			return err
+		}
+
+		return walkFunc(file)
+
+	})
 
 }
 
@@ -212,13 +259,7 @@ func (ws *workspace) Open(file string) (repository.WorkspaceFile, error) {
 		return nil, err
 	}
 
-	stat, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	return &workspaceFile{f, statToPermission(stat)}, nil
-
+	return newWorkspaceFile(file, f)
 }
 
 func statToPermission(stat fs.FileInfo) object.Permission {
@@ -239,11 +280,23 @@ var _ repository.WorkspaceFile = &workspaceFile{}
 
 type workspaceFile struct {
 	*os.File
-	permission object.Permission
+	stat repository.WorkspaceFileStat
 }
 
-func (f *workspaceFile) Permission() object.Permission {
-	return f.permission
+func newWorkspaceFile(path string, f *os.File) (*workspaceFile, error) {
+
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := newWorkspaceFileStat(path, info)
+	if err != nil {
+		return nil, err
+	}
+
+	return &workspaceFile{f, stat}, nil
+
 }
 
 func (f *workspaceFile) Chmod(p object.Permission) error {
@@ -261,11 +314,27 @@ func (f *workspaceFile) Chmod(p object.Permission) error {
 	return f.File.Chmod(mode)
 }
 
+func (f *workspaceFile) Info() repository.WorkspaceFileStat {
+	return f.stat
+}
+
 var _ repository.WorkspaceFileStat = &workspaceFileStat{}
 
 type workspaceFileStat struct {
+	path string
 	fs.FileInfo
 	stats *repository.FileStat
+}
+
+func newWorkspaceFileStat(path string, info fs.FileInfo) (*workspaceFileStat, error) {
+
+	statt, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil, errors.New("failed to get statt")
+	}
+
+	return &workspaceFileStat{path, info, newFileStat(statt)}, nil
+
 }
 
 func (stat *workspaceFileStat) IsDir() bool {
@@ -274,6 +343,22 @@ func (stat *workspaceFileStat) IsDir() bool {
 
 func (stat *workspaceFileStat) Stats() *repository.FileStat {
 	return stat.stats
+}
+
+func (stat *workspaceFileStat) Name() string {
+	return stat.FileInfo.Name()
+}
+
+func (stat *workspaceFileStat) Path() string {
+	return stat.path
+}
+
+func (stat *workspaceFileStat) Size() int64 {
+	return stat.FileInfo.Size()
+}
+
+func (stat *workspaceFileStat) Permission() object.Permission {
+	return stat.stats.Permission()
 }
 
 func newFileStat(s *syscall.Stat_t) *repository.FileStat {

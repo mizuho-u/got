@@ -404,7 +404,7 @@ func (repo *repository) Diff(staged bool) ([]diff, error) {
 			}
 
 			modified.BOID = blob.OID()
-			modified.BMode = string(f.Stats().permission())
+			modified.BMode = string(f.Stats().Permission())
 			modified.BPath = path
 			modified.BData = data
 
@@ -558,11 +558,12 @@ func (repo *repository) scan(workspaceScanner WorkspaceScanner) error {
 }
 
 const (
-	statusNone         status = " "
-	statusIndexAdded   status = "A"
-	statusFileDeleted  status = "D"
-	statusFileModified status = "M"
-	statusUnchanged    status = statusNone + statusNone
+	statusNone          status = " "
+	statusIndexAdded    status = "A"
+	statusFileDeleted   status = "D"
+	statusFileModified  status = "M"
+	statusFileUntracked status = ""
+	statusUnchanged     status = statusNone + statusNone
 )
 
 type status string

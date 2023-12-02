@@ -49,3 +49,34 @@ func (s set[T]) Length() int {
 func (s set[T]) Iter() []T {
 	return Keys(s)
 }
+
+type sortedSet[T comparable] map[T]interface{}
+
+func NewSortedSet[T comparable]() Set[T] {
+	return sortedSet[T]{}
+}
+
+func (s sortedSet[T]) Set(v T) {
+	s[v] = nil
+}
+
+func (s sortedSet[T]) Has(v T) bool {
+	_, ok := s[v]
+
+	return ok
+}
+
+func (s sortedSet[T]) Merge(other Set[T]) {
+
+	for _, v := range other.Iter() {
+		s.Set(v)
+	}
+}
+
+func (s sortedSet[T]) Length() int {
+	return len(s)
+}
+
+func (s sortedSet[T]) Iter() []T {
+	return Keys(s)
+}

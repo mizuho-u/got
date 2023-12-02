@@ -3,6 +3,7 @@ package repository_test
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"testing"
 
 	"github.com/mizuho-u/got/internal"
@@ -54,11 +55,15 @@ var _ repository.Workspace = &workspace{}
 type workspace struct {
 	files map[string]repository.WorkspaceFile
 	stats map[string]repository.WorkspaceFileStat
+	dirs  map[string]internal.Set[repository.WorkspaceFileStat]
 }
 
 func newWorkspace() *workspace {
 
-	ws := &workspace{files: map[string]repository.WorkspaceFile{}, stats: map[string]repository.WorkspaceFileStat{}}
+	ws := &workspace{
+		files: map[string]repository.WorkspaceFile{},
+		stats: map[string]repository.WorkspaceFileStat{},
+		dirs:  make(map[string]internal.Set[repository.WorkspaceFileStat])}
 
 	return ws
 }
@@ -80,15 +85,14 @@ func (ws *workspace) RemoveDirectory(dir string) error {
 
 func (ws *workspace) CreateDir(dir string) error {
 
-	ws.stats[dir] = workspaceFileStat(true)
-
+	ws.stats[dir] = newWorkspaceFileStat(dir, 0, object.Directory, true)
 	return nil
 }
 
 func (ws *workspace) CreateFile(file string) (repository.WorkspaceFile, error) {
 
-	ws.files[file] = &workspaceFile{object.RegularFile, []byte{}}
-	ws.stats[file] = workspaceFileStat(false)
+	ws.files[file] = newWorkspaceFile(file, object.RegularFile, []byte{})
+	ws.stats[file] = ws.files[file].Info()
 
 	return ws.files[file], nil
 }
@@ -106,6 +110,16 @@ func (ws *workspace) Stat(entry string) (repository.WorkspaceFileStat, error) {
 	}
 }
 
+func (ws *workspace) ListDir(dir string) ([]repository.WorkspaceFileStat, error) {
+
+	stats, ok := ws.dirs[dir]
+	if !ok {
+		return nil, fmt.Errorf("dir %s not found", dir)
+	}
+
+	return stats.Iter(), nil
+}
+
 func (ws *workspace) Open(f string) (repository.WorkspaceFile, error) {
 
 	if file, ok := ws.files[f]; ok {
@@ -121,18 +135,50 @@ func (ws *workspace) Open(f string) (repository.WorkspaceFile, error) {
 
 func (ws *workspace) add(path string, f *file) {
 
-	ws.files[path] = &workspaceFile{f.permission, f.data}
-	ws.stats[path] = workspaceFileStat(false)
+	ws.files[path] = newWorkspaceFile(path, f.permission, f.data)
+	ws.stats[path] = ws.files[path].Info()
 
-	for _, d := range internal.ParentDirs(path) {
-		ws.stats[d] = workspaceFileStat(true)
+	ws.setDirs(filepath.Dir(path), ws.stats[path])
+
+	parents := internal.ParentDirs(path)
+	for i, d := range parents {
+		ws.stats[d] = newWorkspaceFileStat(d, 0, object.Directory, true)
+		if i >= 1 {
+			ws.setDirs(parents[i-1], ws.stats[d])
+		}
 	}
+
+}
+
+func (ws *workspace) setDirs(path string, stat repository.WorkspaceFileStat) {
+
+	dir, ok := ws.dirs[path]
+	if !ok {
+		ws.dirs[path] = internal.NewSet[repository.WorkspaceFileStat]()
+		dir = ws.dirs[path]
+	}
+
+	dir.Set(stat)
+
 }
 
 func (ws *workspace) addRange(files map[string]*file) {
 
 	for path, f := range files {
 		ws.add(path, f)
+	}
+}
+
+func (ws *workspace) modify(files map[string]*file) {
+
+	for path, f := range files {
+		ws.add(path, f)
+		stat := ws.stats[path]
+		if stat, ok := stat.(*workspaceFileStat); ok {
+
+			stat.stat = repository.NewFileStat(1, 1, 1, 1, 0, 0, permissionToMode(f.permission), 0, 0, uint32(len(f.data)))
+		}
+
 	}
 }
 
@@ -160,8 +206,8 @@ func (ws *workspace) equals(t testing.TB, files map[string]*file) {
 			t.Errorf("expect %s contents %s, got %s", path, expect.data, data)
 		}
 
-		if got.Permission() != expect.permission {
-			t.Errorf("expect %s permission %s, got %s", path, expect.permission, got.Permission())
+		if got.Info().Permission() != expect.permission {
+			t.Errorf("expect %s permission %s, got %s", path, expect.permission, got.Info().Permission())
 		}
 
 	}
@@ -189,13 +235,17 @@ func (ws *workspace) equals(t testing.TB, files map[string]*file) {
 
 var _ repository.WorkspaceFile = &workspaceFile{}
 
+func newWorkspaceFile(path string, permission object.Permission, data []byte) *workspaceFile {
+	return &workspaceFile{data, newWorkspaceFileStat(path, int64(len(data)), permission, permission == object.Directory)}
+}
+
 type workspaceFile struct {
-	permission object.Permission
-	data       []byte
+	data []byte
+	stat *workspaceFileStat
 }
 
 func (f *workspaceFile) Chmod(p object.Permission) error {
-	f.permission = p
+	f.stat.permission = p
 	return nil
 }
 
@@ -224,20 +274,69 @@ func (f *workspaceFile) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (f *workspaceFile) Permission() object.Permission {
-	return f.permission
+func (f *workspaceFile) Info() repository.WorkspaceFileStat {
+	return f.stat
 }
 
-var _ repository.WorkspaceFileStat = workspaceFileStat(true)
+var _ repository.WorkspaceFileStat = &workspaceFileStat{}
 
-type workspaceFileStat bool
-
-func (s workspaceFileStat) IsDir() bool {
-	return bool(s)
+type workspaceFileStat struct {
+	path       string
+	len        int64
+	permission object.Permission
+	isDir      bool
+	stat       *repository.FileStat
 }
 
-func (s workspaceFileStat) Stats() *repository.FileStat {
-	return nil
+func newWorkspaceFileStat(path string, len int64, permission object.Permission, isDir bool) *workspaceFileStat {
+
+	stat := repository.NewFileStat(0, 0, 0, 0, 0, 0, permissionToMode(permission), 0, 0, uint32(len))
+
+	return &workspaceFileStat{path, len, permission, isDir, stat}
+
+}
+
+func permissionToMode(permission object.Permission) uint32 {
+
+	switch permission {
+	case object.Directory:
+		return modeDir
+	case object.ExecutableFile:
+		return modeFileExecutable
+	default:
+		return modeFileRegurar
+	}
+
+}
+
+func (s *workspaceFileStat) IsDir() bool {
+	return s.isDir
+}
+
+const (
+	modeFileRegurar    uint32 = 33188
+	modeFileExecutable uint32 = 33261
+	modeDir            uint32 = 16877
+)
+
+func (s *workspaceFileStat) Stats() *repository.FileStat {
+	return s.stat
+}
+
+func (s *workspaceFileStat) Name() string {
+	return filepath.Base(s.path)
+}
+
+func (s *workspaceFileStat) Path() string {
+	return s.path
+}
+
+func (s *workspaceFileStat) Size() int64 {
+	return s.len
+}
+
+func (s *workspaceFileStat) Permission() object.Permission {
+	return s.permission
 }
 
 var _ repository.Database = &database{}
@@ -266,26 +365,4 @@ func (db *database) store(objects ...object.Object) {
 		db.objects[o.OID()] = o
 	}
 
-}
-
-var _ repository.IndexWriter = &index{}
-
-type index struct {
-	entries map[string]*repository.IndexEntry
-}
-
-func newIndex() *index {
-	return &index{map[string]*repository.IndexEntry{}}
-}
-
-func (i *index) Add(entries ...*repository.IndexEntry) {
-
-	for _, entry := range entries {
-		i.entries[entry.Name()] = entry
-	}
-
-}
-
-func (i *index) Delete(entry string) {
-	delete(i.entries, entry)
 }

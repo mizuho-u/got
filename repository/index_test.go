@@ -31,7 +31,7 @@ func TestAddEntry(t *testing.T) {
 			expect:      []string{"alice.txt", "nested"},
 		},
 		{
-			description: "recursively replcaes a directory with a file",
+			description: "recursively replaces a directory with a file",
 			add:         []string{"alice.txt", "nested/bob.txt", "nested/inner/claire.txt", "nested"},
 			expect:      []string{"alice.txt", "nested"},
 		},

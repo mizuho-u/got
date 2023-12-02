@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"errors"
+
 	"github.com/mizuho-u/got/io/database"
 	"github.com/mizuho-u/got/io/workspace"
 	"github.com/mizuho-u/got/repository"
@@ -39,9 +41,13 @@ func Checkout(ctx GotContextReaderWriter, revision types.Revision) error {
 		return err
 	}
 
-	m := repository.NewMigration(diff.Changes(), ws, db.Objects(), index)
+	m := repository.NewMigration(diff.Changes(), ws, db.Objects(), index, repository.NewInspector(index, ws))
 	if err := m.ApplyChanges(); err != nil {
 		return err
+	}
+
+	if conflicts := m.Conflicts(); len(conflicts) != 0 {
+		return errors.Join(conflicts...)
 	}
 
 	if err := db.Refs().UpdateHeadCommit(oid.String()); err != nil {

@@ -2,7 +2,6 @@ package usecase_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,16 +12,12 @@ import (
 func TestInitDir(t *testing.T) {
 
 	// arrange
-	dir, err := ioutil.TempDir("", "got-test")
-	if err != nil {
-		t.Fatal("failed to create tempdir", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	out := &bytes.Buffer{}
 
 	// act
-	err = usecase.InitDir(newContext(dir, "", "", out, out))
+	err := usecase.InitDir(newContext(dir, "", "", out, out))
 	if err != nil {
 		t.Fatal(err)
 	}
