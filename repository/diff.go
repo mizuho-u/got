@@ -1,395 +1,363 @@
 package repository
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"io"
-	"sort"
+	"path/filepath"
+
+	"github.com/mizuho-u/got/repository/object"
 )
 
-type line struct {
-	number int
-	text   string
-}
+func (repo *repository) Diff(staged bool) ([]diff, error) {
 
-func lines(r io.Reader) ([]*line, error) {
-
-	scan := bufio.NewScanner(r)
-	lines := []*line{}
-
-	for i := 1; scan.Scan(); i++ {
-		lines = append(lines, &line{i, scan.Text()})
+	if staged {
+		return repo.diffStaged()
 	}
 
-	if err := scan.Err(); err != nil {
-		return lines, err
+	diffs := []diff{}
+
+	files, types := repo.WorkspaceChanges()
+
+	for _, path := range files {
+
+		var d diff
+
+		switch types[path] {
+		case statusFileDeleted:
+
+			deleted := &diffDeleted{}
+
+			deleted.AOID = repo.index.entries[path].oid
+			deleted.AMode = string(repo.index.entries[path].permission())
+			deleted.APath = filepath.Join("a", path)
+			obj, err := repo.object.Load(deleted.AOID)
+			if err != nil {
+				return nil, err
+			}
+			deleted.AData = obj.Data()
+
+			deleted.BOID = nullOID
+			deleted.BPath = filepath.Join("b", path)
+			deleted.BData = []byte(nullContents)
+
+			d = deleted
+
+		case statusFileModified:
+
+			modified := &diffModified{}
+
+			modified.AOID = repo.index.entries[path].oid
+			modified.AMode = string(repo.index.entries[path].permission())
+			modified.APath = path
+
+			obj, err := repo.object.Load(modified.AOID)
+			if err != nil {
+				return nil, err
+			}
+			modified.AData = obj.Data()
+
+			f := repo.workspace[path]
+			f.Seek(0, io.SeekStart)
+			data, err := io.ReadAll(f)
+			if err != nil {
+				return diffs, err
+			}
+
+			blob, err := object.NewBlob(path, data)
+			if err != nil {
+				return diffs, err
+			}
+
+			modified.BOID = blob.OID()
+			modified.BMode = string(f.Stats().Permission())
+			modified.BPath = path
+			modified.BData = data
+
+			d = modified
+
+		}
+
+		diffs = append(diffs, d)
+
 	}
 
-	return lines, nil
+	return diffs, nil
 }
 
-type myers struct {
-	a, b []*line
-}
+func (repo *repository) diffStaged() ([]diff, error) {
 
-func newMyers(a, b []*line) *myers {
-	return &myers{a, b}
-}
+	diffs := []diff{}
 
-type symbol string
+	files, types := repo.IndexChanges()
 
-func (s symbol) String() string {
-	return string(s)
+	for _, path := range files {
+
+		var d diff
+
+		switch types[path] {
+		case statusFileModified:
+
+			modified := &diffModified{}
+
+			f := repo.head[path]
+
+			modified.AOID = f.OID()
+			modified.AMode = string(f.Permission())
+			modified.APath = path
+			adata, err := io.ReadAll(f)
+			if err != nil {
+				return nil, err
+			}
+			modified.AData = adata
+
+			modified.BOID = repo.index.entries[path].oid
+			modified.BMode = string(repo.index.entries[path].permission())
+			modified.BPath = path
+
+			obj, err := repo.object.Load(modified.BOID)
+			if err != nil {
+				return nil, err
+			}
+			modified.BData = obj.Data()
+
+			d = modified
+
+		case statusFileDeleted:
+
+			deleted := &diffDeleted{}
+
+			deleted.AOID = repo.head[path].OID()
+			deleted.AMode = string(repo.head[path].Permission())
+			deleted.APath = filepath.Join("a", path)
+
+			obj, err := repo.object.Load(deleted.AOID)
+			if err != nil {
+				return nil, err
+			}
+			deleted.AData = obj.Data()
+
+			deleted.BOID = nullOID
+			deleted.BPath = filepath.Join("b", path)
+			deleted.BData = []byte(nullContents)
+
+			d = deleted
+
+		case statusIndexAdded:
+
+			added := &diffAdded{}
+
+			added.AOID = nullOID
+			added.APath = filepath.Join("a", path)
+			added.AData = []byte(nullContents)
+
+			added.BOID = repo.index.entries[path].oid
+			added.BMode = string(repo.index.entries[path].permission())
+			added.BPath = filepath.Join("b", path)
+			obj, err := repo.object.Load(added.BOID)
+			if err != nil {
+				return nil, err
+			}
+			added.BData = obj.Data()
+
+			d = added
+
+		}
+
+		diffs = append(diffs, d)
+
+	}
+
+	return diffs, nil
 }
 
 const (
-	Nochange  symbol = " "
-	Insertion symbol = "+"
-	Deletion  symbol = "-"
+	statusNone          status = " "
+	statusIndexAdded    status = "A"
+	statusFileDeleted   status = "D"
+	statusFileModified  status = "M"
+	statusFileUntracked status = ""
+	statusUnchanged     status = statusNone + statusNone
 )
 
-type edit struct {
-	diff  symbol
-	aline *line
-	bline *line
-	line  *line
+type status string
+
+func (s status) ShortFormat() string {
+	return string(s)
 }
 
-func newEdit(diff symbol, aline, bline *line) *edit {
-
-	var line *line
-	if aline != nil {
-		line = aline
-	} else {
-		line = bline
-	}
-
-	return &edit{diff, aline, bline, line}
-
-}
-
-func (e *edit) String() string {
-	return fmt.Sprintf("%s%s", e.diff, e.line.text)
-}
-
-func (e *edit) Diff() symbol {
-	return e.diff
-}
-
-type edits []*edit
-
-func (es edits) filter(f func(e *edit) bool) (edits edits) {
-
-	for _, e := range es {
-
-		if f(e) {
-			edits = append(edits, e)
-		}
-
-	}
-
-	return
-}
-
-func (es edits) String() string {
-
-	var s string
-	for _, e := range es {
-		s += fmt.Sprintln(e)
-	}
-
-	return s
-}
-
-const hunkContext int = 3
-
-func (es edits) hunks() []*hunk {
-
-	hunks := []*hunk{}
-	offset := 0
-
-	for {
-
-		for offset < len(es) && es[offset].diff == Nochange {
-			offset++
-		}
-
-		if offset >= len(es) {
-			return hunks
-		}
-
-		offset -= hunkContext + 1
-
-		aStart := 0
-		if offset >= 0 {
-			aStart = es[offset].aline.number
-		}
-
-		bStart := 0
-		if offset >= 0 {
-			bStart = es[offset].bline.number
-		}
-
-		hunk := &hunk{aStart, bStart, []*edit{}}
-		offset = hunk.build(es, offset)
-		hunks = append(hunks, hunk)
-
+func (s status) LongFormat() string {
+	switch s {
+	case statusIndexAdded:
+		return "new file"
+	case statusFileDeleted:
+		return "deleted"
+	case statusFileModified:
+		return "modified"
+	default:
+		return ""
 	}
 }
 
-type hunk struct {
-	aStart, bStart int
-	edits          edits
+const (
+	nullPath     string = "/dev/null"
+	nullOID      string = "0000000000000000000000000000000000000000"
+	nullContents string = ""
+)
+
+type diff interface {
+	PathLine() string
+	ModeLine() string
+	IndexLine() string
+	FileLine() string
+	Hunks() []*hunk
 }
 
-func (h *hunk) String() string {
+type diffModified struct {
+	AOID  string
+	AMode string
+	APath string
+	AData []byte
+	BOID  string
+	BMode string
+	BPath string
+	BData []byte
+}
 
-	l := fmt.Sprintln(h.Header())
+func (diff *diffModified) PathLine() string {
+	return fmt.Sprintf("diff --git %s %s\n", filepath.Join("a", diff.APath), filepath.Join("b", diff.BPath))
+}
 
-	for _, e := range h.edits {
-		l += fmt.Sprintln(e)
+func (diff *diffModified) ModeLine() string {
+
+	l := ""
+
+	if diff.AMode != diff.BMode {
+		l += fmt.Sprintf("old mode %s\n", diff.AMode)
+		l += fmt.Sprintf("new mode %s\n", diff.BMode)
 	}
 
 	return l
 }
 
-func (h *hunk) Edits() edits {
-	return h.edits
-}
+func (diff *diffModified) IndexLine() string {
 
-func (h *hunk) Header() string {
-
-	aStart, aSize := h.offset(func(e *edit) bool { return e.aline != nil }, func(e *edit) int { return e.aline.number }, h.aStart)
-	bStart, bSize := h.offset(func(e *edit) bool { return e.bline != nil }, func(e *edit) int { return e.bline.number }, h.bStart)
-
-	return fmt.Sprintf("@@ -%d,%d +%d,%d @@", aStart, aSize, bStart, bSize)
-}
-
-func (h *hunk) offset(filterFunc func(*edit) bool, startFunc func(*edit) int, defaultStart int) (int, int) {
-
-	lines := h.edits.filter(filterFunc)
-
-	start := defaultStart
-	if len(lines) > 0 {
-		start = startFunc(lines[0])
+	if diff.AOID == diff.BOID {
+		return ""
 	}
 
-	return start, len(lines)
-}
-
-func (h *hunk) build(edits edits, offset int) int {
-
-	counter := -1
-	for counter != 0 {
-
-		if offset >= 0 && counter > 0 {
-			h.edits = append(h.edits, edits[offset])
-		}
-
-		offset++
-		if offset >= len(edits) {
-			break
-		}
-
-		if offset+hunkContext < len(edits) {
-
-			switch edits[offset+hunkContext].diff {
-			case Insertion, Deletion:
-				counter = 2*hunkContext + 1
-			default:
-				counter -= 1
-			}
-
-		}
-
+	if diff.AMode != diff.BMode {
+		return fmt.Sprintf("index %s..%s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID))
 	}
 
-	return offset
+	return fmt.Sprintf("index %s..%s %s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID), diff.AMode)
 }
 
-func (my *myers) diff() edits {
+func (diff *diffModified) FileLine() string {
 
-	diff := edits{}
-
-	moves := make(chan *move)
-	go my.backtrack(moves)
-
-	for {
-
-		move, ok := <-moves
-		if !ok {
-			break
-		}
-
-		if move.x == move.prev.x {
-
-			diff = append(diff, newEdit(Insertion, nil, my.b[move.prev.y]))
-
-		} else if move.y == move.prev.y {
-
-			diff = append(diff, newEdit(Deletion, my.a[move.prev.x], nil))
-
-		} else {
-
-			diff = append(diff, newEdit(Nochange, my.a[move.prev.x], my.b[move.prev.y]))
-
-		}
+	if diff.AOID == diff.BOID {
+		return ""
 	}
 
-	// 後ろから前に向かってチェックしたので最後は順番を戻す
-	sort.SliceStable(diff, func(i, j int) bool {
-		return i > j
-	})
+	l := fmt.Sprintf("--- %s\n", filepath.Join("a", diff.APath))
+	l += fmt.Sprintf("+++ %s\n", filepath.Join("b", diff.BPath))
 
-	return diff
+	return l
 
 }
 
-// intarray
-type intarray []int
+func (diff *diffModified) Hunks() []*hunk {
 
-func (ns *intarray) set(i, v int) {
+	al, _ := lines(bytes.NewBuffer(diff.AData))
+	bl, _ := lines(bytes.NewBuffer(diff.BData))
 
-	(*ns)[ns.index(i)] = v
+	m := newMyers(al, bl)
+
+	return m.diff().hunks()
+
 }
 
-func (ns *intarray) get(i int) int {
-	return (*ns)[ns.index(i)]
+type diffDeleted struct {
+	AOID  string
+	AMode string
+	APath string
+	AData []byte
+	BOID  string
+	BMode string
+	BPath string
+	BData []byte
 }
 
-func (ns *intarray) index(i int) uint {
-	if i >= 0 {
-		return uint(i)
-	} else if l := len(*ns) + i; l >= 0 {
-		return uint(l)
-	} else {
-		panic(fmt.Sprintf("index out of range %d", i))
-	}
+func (diff *diffDeleted) PathLine() string {
+	return fmt.Sprintf("diff --git %s %s\n", diff.APath, diff.BPath)
 }
 
-// shortestEdit aをbにする最短の編集
-//
-// ex. a -> "ABCABBA" , b -> "CBABAC", k -> x-y
-//
-//   k| -3 -2 -1  0  1  2  3  4
-// d --------------------------
-// 0  |  0  0  0  0  0  0  0  0
-// 1  |  0  0  0  0  1  0  0  0
-// 2  |  0  2  0  2  1  3  0  0
-// 3  |  3  2  4  2  5  3  5  0
-// 4  |  3  4  4  5  5  7  5  7
-// 4  |  3  4  5  5  7  7  5  7
-func (my *myers) shortestEdit() []intarray {
-	n, m := len(my.a), len(my.b)
-	max := n + m
-
-	if max == 0 {
-		return []intarray{}
-	}
-
-	xs := make(intarray, 2*max+1)
-	// (0, 0)の前は(0, -1)とする
-	xs.set(1, 0)
-
-	trace := []intarray{}
-
-	// d -> 移動回数
-	for d := 0; d <= max; d++ {
-
-		// min(src, dist)の長さだけしかcopyされないので、
-		// srcの長さだけdistの配列を作って全部コピる
-		t := make(intarray, len(xs))
-		copy(t, xs)
-		trace = append(trace, t)
-
-		// k -> x-y
-		for k := -d; k <= d; k += 2 {
-
-			//　k == -d （xが0）は全部下(y)を選択
-			//  k != d && (xs.get(k-1) < xs.get(k+1)) は kが大きい方（削除優先）を選択
-			x := 0
-			if k == -d || (k != d && (xs.get(k-1) < xs.get(k+1))) {
-				// 下
-				x = xs.get(k + 1)
-			} else {
-				// 右
-				x = xs.get(k-1) + 1
-			}
-
-			y := x - k
-
-			// 同じ文字列は飛ばす
-			for x < n && y < m && my.a[x].text == my.b[y].text {
-				x, y = x+1, y+1
-			}
-
-			xs.set(k, x)
-
-			// 右下に到達したら終わり
-			if x >= n && y >= m {
-				return trace
-			}
-
-		}
-	}
-
-	return trace
+func (diff *diffDeleted) ModeLine() string {
+	return fmt.Sprintf("deleted file mode %s\n", diff.AMode)
 }
 
-type vector2 struct {
-	x, y int
+func (diff *diffDeleted) IndexLine() string {
+	return fmt.Sprintf("index %s..%s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID))
 }
 
-type move struct {
-	prev *vector2
-	*vector2
+func (diff *diffDeleted) FileLine() string {
+
+	l := fmt.Sprintf("--- %s\n", diff.APath)
+	l += fmt.Sprintf("+++ %s\n", nullPath)
+
+	return l
+
 }
 
-// backtrack 終端の len(a),len(b) から 0,0 への最短編集経路のパスを生成する
-//
-// ex. a -> "ABCABBA" , b -> "CBABAC", k -> x-y
-//
-//   k| -3 -2 -1  0  1  2  3  4
-// d --------------------------
-// 0  |  0  0  0  G  0  0  0  0
-// 1  |  0  0  0  0  X  0  0  0
-// 2  |  0  2  0  2  1  X  0  0
-// 3  |  3  2  4  2  X  3  5  0
-// 4  |  3  4  4  5  5  X  5  7
-// 4  |  3  4  5  5  S  7  5  7
-func (my *myers) backtrack(moves chan<- *move) {
-	x, y := len(my.a), len(my.b)
-	trace := my.shortestEdit()
+func (diff *diffDeleted) Hunks() []*hunk {
 
-	// d -> 移動回数
-	for d := len(trace) - 1; 0 <= d; d-- {
+	al, _ := lines(bytes.NewBuffer(diff.AData))
+	bl, _ := lines(bytes.NewBuffer(diff.BData))
 
-		xs := trace[d]
+	m := newMyers(al, bl)
 
-		// 削除優先でkが大きいところを進む
-		k := x - y
-		prevk := 0
-		if k == -d || (k != d && (xs.get(k-1) < xs.get(k+1))) {
-			prevk = k + 1 // prevk -> k は下
-		} else {
-			prevk = k - 1 // prevk -> k は右
-		}
+	return m.diff().hunks()
 
-		prevx := xs.get(prevk)
-		prevy := prevx - prevk
-		// 飛ばした分を移動する
-		for x > prevx && y > prevy {
-			moves <- &move{&vector2{x - 1, y - 1}, &vector2{x, y}}
-			x, y = x-1, y-1
-		}
+}
 
-		if d > 0 {
-			moves <- &move{&vector2{prevx, prevy}, &vector2{x, y}}
-		}
+type diffAdded struct {
+	AOID  string
+	AMode string
+	APath string
+	AData []byte
+	BOID  string
+	BMode string
+	BPath string
+	BData []byte
+}
 
-		x, y = prevx, prevy
-	}
+func (diff *diffAdded) PathLine() string {
+	return fmt.Sprintf("diff --git %s %s\n", diff.APath, diff.BPath)
+}
 
-	close(moves)
+func (diff *diffAdded) ModeLine() string {
+	return fmt.Sprintf("new file mode %s\n", diff.BMode)
+}
+
+func (diff *diffAdded) IndexLine() string {
+	return fmt.Sprintf("index %s..%s\n", object.ShortOID(diff.AOID), object.ShortOID(diff.BOID))
+}
+
+func (diff *diffAdded) FileLine() string {
+
+	l := fmt.Sprintf("--- %s\n", nullPath)
+	l += fmt.Sprintf("+++ %s\n", diff.BPath)
+
+	return l
+}
+
+func (diff *diffAdded) Hunks() []*hunk {
+
+	al, _ := lines(bytes.NewBuffer(diff.AData))
+	bl, _ := lines(bytes.NewBuffer(diff.BData))
+
+	m := newMyers(al, bl)
+
+	return m.diff().hunks()
 
 }
