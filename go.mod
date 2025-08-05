@@ -1,6 +1,8 @@
 module github.com/mizuho-u/got
 
-go 1.18
+go 1.24
+
+toolchain go1.24.4
 
 require (
 	github.com/fatih/color v1.15.0
