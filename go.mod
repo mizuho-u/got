@@ -1,6 +1,6 @@
 module github.com/mizuho-u/got
 
-go 1.24
+go 1.24.0
 
 toolchain go1.24.5
 
@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.9.1
-	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6
 )
 
 require (
