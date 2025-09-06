@@ -2,7 +2,7 @@ module github.com/mizuho-u/got
 
 go 1.24.0
 
-toolchain go1.24.5
+toolchain go1.25.1
 
 require (
 	github.com/fatih/color v1.18.0
